@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""import global module"""
 import copy
 import random
 from operator import itemgetter, attrgetter 
@@ -8,13 +9,17 @@ from glv import *
 from class_def import *
 
 
-'''generate request queue A data'''
+"""
+queue_a is the normal predicted request queue without prefetch schedule
+queue_b is the queue after prefetch schedule
+"""
 rQueueA = range(N)
 rQueueB = range(N)
 
 for i in xrange(N):
 	rQueueA[i] = rQueueB[i] = Request(T)
 
+"""generate or load base data about queue_a"""
 dGen = DataGenerator(N,T)
 dGen.genReqArrivalTime(N,T)
 dGen.sortReqArrivalTime()
@@ -26,7 +31,7 @@ for i in xrange(N):
 	rQueueA[i].left = rQueueA[i].size
 """
 
-'''load request queue A data'''
+'''load queue_a data'''
 dLoader = DataLoader()
 dLoader.loadData()
 TL = dLoader.timeSlotLength
@@ -45,17 +50,23 @@ for i in xrange(N):
 	rQueueA[i].left = rQueueA[i].size
 """
 
+"""queue_b get arrival time,size,left_size from queue_a"""
 rQueueB = copy.deepcopy(rQueueA)
 
 print 'data genaration finished\n'
 
-#compute origin queue A parameter
+"""simulate the process in queue_a"""
 reqActive = 0
 bActive = B
 totalReqSize = 0
 totalWaitingTimeA = 0
 reqUnfinishedA = []
 
+"""
+step1.find active process
+step2.simulate data transfer in current second
+step3.get finished task info
+"""
 for j in xrange(T+1):
 	for i in xrange(N):
 		if rQueueA[i].at<=j and rQueueA[i].left>0 and rQueueA[i].state==0:
@@ -77,6 +88,7 @@ for j in xrange(T+1):
 			rQueueA[i].ft = j
 			reqActive -= 1
 
+"""compute waiting time and transfered data size for every req in queue_a"""
 for i in xrange(N):
 	if rQueueA[i].ft != -1 :
 		rQueueA[i].wt = rQueueA[i].ft-rQueueA[i].at+1
@@ -115,7 +127,7 @@ pS.exportData(rQueueB,N,T)
 
 print 'problem solve finisded\n'
 
-#scheduling queue B
+"""simulate the process in queue_b"""
 for j in xrange(T+1):
 	for i in xrange(N):
 		if rQueueB[i].left > 0:
@@ -211,6 +223,7 @@ for i in xrange(len(rQueueC)):
 	for j in xrange(T+1):
 		rQueueC[i].bb[j] = rQueueB[i].bb[j]
 
+print '\n'
 """add deltaT Disturbance on stochastic request"""
 for i in random.sample(range(N),atDisturbanceCount):
 	print "before: r%d : %d" % (i,rQueueC[i].at)
@@ -225,15 +238,83 @@ for i in random.sample(range(N),atDisturbanceCount):
 
 	print "after: r%d : %d" % (i,rQueueC[i].at)
 
-
+print '\n'
 """mix queue_c and miss data,then sort the new queue"""
 rQueueC.extend(rQueueM)
 rQueueC = sorted(rQueueC,key=attrgetter('at'))	
 
-print '\n'
 for i in xrange(len(rQueueC)):
 	print 'c%d : %d %d %d %d %d' % (i,rQueueC[i].at,rQueueC[i].size,rQueueC[i].left,rQueueC[i].miss,rQueueC[i].false)
 
 """schedule queue_c"""
-#for j in xrange(T+1):
+mReqRecorder = []
+pReqRecorder = []
+nReqRecorder = []
+sReqRecorder = []
+for j in xrange(T+1):
+	bAvailable = B
+	for i in xrange(len(rQueueC)):
+		if rQueueC[i].left>0 \
+		and (rQueueC[i] in mReqRecorder) == false \
+		and (rQueueC[i] in pReqRecorder) == false \
+		and (rQueueC[i] in nReqRecorder) == false: 			#unfinished task
+			if rQueueC[i].miss==1 and rQueueC[i].at<=j:		#if it's a miss			
+				mReqRecorder.append(rQueueC[i])
+			elif rQueueC[i].miss!=1 and rQueueC[i].at>j and rQueueC[i].bb[j]>0:	#if it's a prefetch	
+				pReqRecorder.append(rQueueC[i])
+			elif rQueueC[i].miss!=1 and rQueueC[i].at<=j and rQueueC[i].bb[j]>0:						#if it's a normal request
+				nReqRecorder.append(rQueueC[i])
+			else:
+				pass
+		else:
+			pass
 
+	'''if there is a miss,prefetch suspend,
+	   and the total suspended part become a new miss at the end of this req '''		
+	for i in xrange(len(pReqRecorder)):	
+		if pReqRecorder[i].at<=j:
+			nReqRecorder.append(pReqRecorder.pop(i))
+		else:
+			pass
+
+		if len(mReqRecorder)!=0:
+			if pReqRecorder[i].bb[j]>0:
+				pReqRecorder[i].st = j
+			else:
+				pass
+		else:
+			pReqRecorder[i].left -= pReqRecorder[i].bb[j]*TL
+			if pReqRecorder[i].st!=-1
+				pReqRecorder[i].se = j
+				for t in xrange(st,se)
+					pReqRecorder[i].sizesus += pReqRecorder[i].bb[t]*TL
+				newReq = Request(T+plusT)
+				newReq.size = pReqRecorder[i].sizesus
+				newReq.sindex = rQueueC.index(pReqRecorder[i])
+				sReqRecorder.append(newReq)
+
+		if pReqRecorder[i].left<=0: 							#prefetch finished before req arrive
+			pReqRecorder[i].ft = pReqRecorder[i].at-1
+			pReqRecorder.pop(i)
+
+	'''normal request proceed as usual'''
+	for i in xrange(len(nReqRecorder)):						
+		bAvailable -= nReqRecorder[i].bb[j]
+		nReqRecorder[i].left -= nReqRecorder[i].bb[j]*TL
+		if nReqRecorder[i].left<=0:
+			nReqRecorder[i].ft = j
+			nReqRecorder.pop(i)
+		else
+			pass
+
+	'''miss request share remaining bandwidth'''
+	for i in xrange(len(mReqRecorder)):						
+		mReqRecorder[i].left -= (bAvailable/len(mReqRecorder))*TL
+		if mReqRecorder[i].left<=0:
+			mReqRecorder[i].ft = j
+			mReqRecorder.pop(i)
+		else:
+			pass
+
+	'''process the suspend part'''
+	

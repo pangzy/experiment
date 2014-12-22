@@ -17,7 +17,7 @@ class Request(object):
 	"""common base class for all request"""
 
 	def __init__(self,T):
-		self.at 	= 0				#arrival time
+		self.at 	= -1			#arrival time
 		self.ft 	= -1			#finish time
 		self.wt 	= 0				#waiting time
 		self.size 	= 0				#data size
@@ -26,14 +26,15 @@ class Request(object):
 		self.left 	= 0				#left size at timeslot j
 		self.miss	= 0				#flag of miss request
 		self.false	= 0				#flag of false request
-		self.pstate	= range(T+1)	#prefetch state
+		self.sizesus= 0				#suspend size
+		self.st     = -1			#suspend start
+		self.se 	= -1			#suspend end
+		self.sindex = -1
 		self.ab 	= range(T+1)	#bandwidth for ri at timeslot j in queue A
 		self.bb 	= range(T+1)	#bandwidth for ri at timeslot j in queue B
 		self.cb 	= range(T+1)	#bandwidth for ri at timeslot j in queue C
 
 		for j in xrange(T+1):
-			self.state 		= 0
-			self.pstate[j]	= 0	
 			self.ab[j] 		= 0
 			self.bb[j] 		= 0
 			self.cb[j] 		= 0	
