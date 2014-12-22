@@ -75,11 +75,13 @@ class DataLoader(object):
 
 	def loadData(self):
 		xlsFile 	= open_workbook(DATAFILEPATH)
-		table		= xlsFile.sheet_by_index(0)
+		table		= xlsFile.sheet_by_index(1)
 		timeData 	= table.col_values(1)
 		sizeData	= table.col_values(2)
-		startRow 	= 188
-		endRow		= 266
+#		startRow 	= 188
+#		endRow		= 266
+		startRow 	= 514
+		endRow		= 636
 		self.reqNum	= endRow-startRow+1
 		startTime 	= int(timeData[startRow]*24)
 		endTime 	= int(timeData[endRow]*24)+1
@@ -95,7 +97,7 @@ class LPSolver(object):
 	"""docstring for LPSolver"""
 	def __init__(self):
 		pass
-	
+
 	def defProblem(self,rQueueB,rQueueA,N,T):
 		rIdx = range(N)
 		tIdx = range(T+1)
@@ -143,3 +145,4 @@ class LPSolver(object):
 		for i in xrange(N):
 			for t in xrange(T+1):
 				rQueueB.req[i].bb[t] = int(value(self.varb[str(i)][str(t)]))			
+
