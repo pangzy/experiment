@@ -182,12 +182,16 @@ atDisturbanceCount = int(N*atDisturbancePercent)
 """evaluation queues"""
 rQueueC = range(N)
 rQueueM = range(missCount)
+rQueueD = range(N)			#queue_a'
 
 for i in xrange(len(rQueueC)):
-	rQueueC[i] = Request(T+plusT)
+	rQueueC[i] = Request(T)
 
 for i in xrange(len(rQueueM)):
-	rQueueM[i] = Request(T+plusT)
+	rQueueM[i] = Request(T)
+
+for i in xrange(len(rQueueD)):
+	rQueueD[i] = Request(T)
 
 """miss and false data genaratation
    generate missed request queue"""
@@ -251,13 +255,18 @@ mReqRecorder = []
 pReqRecorder = []
 nReqRecorder = []
 sReqRecorder = []
+mReqPop		 = []
+pReqPop		 = []
+nReqPop		 = []
+sReqPop		 = []
+reqUnfinishedC = []
 for j in xrange(T+1):
 	bAvailable = B
 	for i in xrange(len(rQueueC)):
 		if rQueueC[i].left>0 \
-		and (rQueueC[i] in mReqRecorder) == false \
-		and (rQueueC[i] in pReqRecorder) == false \
-		and (rQueueC[i] in nReqRecorder) == false: 			#unfinished task
+		and (rQueueC[i] in mReqRecorder) == False \
+		and (rQueueC[i] in pReqRecorder) == False \
+		and (rQueueC[i] in nReqRecorder) == False: 			#unfinished task
 			if rQueueC[i].miss==1 and rQueueC[i].at<=j:		#if it's a miss			
 				mReqRecorder.append(rQueueC[i])
 			elif rQueueC[i].miss!=1 and rQueueC[i].at>j and rQueueC[i].bb[j]>0:	#if it's a prefetch	
@@ -266,12 +275,15 @@ for j in xrange(T+1):
 				nReqRecorder.append(rQueueC[i])
 			else:
 				pass
+		elif rQueueC[i].sindex != -1:
+			rQueueC[i].ft = rQueueC[i].at-1
 		else:
 			pass
 
 	'''if there is a miss,prefetch suspend,
 	   and the total suspended part become a new miss at the end of this req '''		
 	for i in xrange(len(pReqRecorder)):	
+		print i,len(pReqRecorder)
 		if pReqRecorder[i].at<=j:
 			nReqRecorder.append(pReqRecorder.pop(i))
 		else:
@@ -284,13 +296,14 @@ for j in xrange(T+1):
 				pass
 		else:
 			pReqRecorder[i].left -= pReqRecorder[i].bb[j]*TL
-			if pReqRecorder[i].st!=-1
+			if pReqRecorder[i].st!=-1:
 				pReqRecorder[i].se = j
-				for t in xrange(st,se)
+				for t in xrange(st,se):
 					pReqRecorder[i].sizesus += pReqRecorder[i].bb[t]*TL
-				newReq = Request(T+plusT)
+				newReq = Request(T)
 				newReq.size = pReqRecorder[i].sizesus
 				newReq.sindex = rQueueC.index(pReqRecorder[i])
+				newReq.miss = 1
 				sReqRecorder.append(newReq)
 
 		if pReqRecorder[i].left<=0: 							#prefetch finished before req arrive
@@ -304,7 +317,7 @@ for j in xrange(T+1):
 		if nReqRecorder[i].left<=0:
 			nReqRecorder[i].ft = j
 			nReqRecorder.pop(i)
-		else
+		else:
 			pass
 
 	'''miss request share remaining bandwidth'''
@@ -317,4 +330,20 @@ for j in xrange(T+1):
 			pass
 
 	'''process the suspend part'''
-	
+	for r in sReqRecorder:
+		if rQueueC[r.sindex].ft != -1:
+			rQueueC[r.sindex].left += r.sizesus
+			rQueueC.append(r)
+		else:
+			pass
+
+for i in xrange(len(rQueueC)):
+	if rQueueC[i].left > 0:
+		rQueueC[i].ft = T
+		rQueueC[i].wt = T-rQueueB[i].at+1
+		reqUnfinishedC.append(i)
+	else:
+		rQueueC[i].wt = rQueueB[i].ft-rQueueB[i].at+1
+
+for i in xrange(len(rQueueC)):
+	print 'c%d : %d %d %d %d %d' % (i,rQueueC[i].at,rQueueC[i].ft,rQueueC[i].wt,rQueueC[i].left,rQueueC[i].miss)
