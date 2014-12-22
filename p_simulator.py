@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import copy
+import random
 from operator import itemgetter, attrgetter 
 from glv import *
 from class_def import *
@@ -154,6 +155,7 @@ print 'Total prefechting data size : %d,percent : %%%d' % (int(TL*value(pS.prob.
 	recall = hit/arrived = hit/(hit+miss)
 	precise = hit/N = hit/(hit+false) = (N-f)/N
 """
+"""evaluation variables"""
 recall = 0.3
 precise = 0.2
 
@@ -162,6 +164,7 @@ hitCount = N-falseCount
 missCount = int(((1.0-recall)/recall)*hitCount)
 deltaT = T
 
+"""evaluation queues"""
 rQueueC = range(N)
 rQueueM = range(missCount)
 
@@ -171,6 +174,7 @@ for i in xrange(len(rQueueC)):
 for i in xrange(len(rQueueM)):
 	rQueueM[i] = Request(T+deltaT)
 
+"""miss and false data genaratation"""
 missDataGen = DataGenerator(missCount,T)
 missDataGen.genReqArrivalTime(missCount,T)
 missDataGen.sortReqArrivalTime()
@@ -182,12 +186,14 @@ for i in xrange(len(rQueueM)):
 	rQueueM[i].left = rQueueM[i].size
 	rQueueM[i].miss = 1
 
-print '\n'
-print "miss req data generated."
+#false flag
+for i in random.sample(range(N),falseCount):
+	rQueueC[i].false = 1
 
 #for i in xrange(missCount):
 #	print 'm%d : %d %d %d' % (i,rQueueM[i].at,rQueueM[i].size,rQueueM[i].left)
 
+"""queue_c get parameters from queue_b"""
 for i in xrange(len(rQueueC)):
 	rQueueC[i].at = rQueueB[i].at
 	rQueueC[i].size = rQueueB[i].size
@@ -201,10 +207,14 @@ for i in xrange(len(rQueueC)):
 	for j in xrange(T+1):
 		rQueueC[i].bb[j] = rQueueB[i].bb[j]
 
+"""mix queue_c and miss data,then sort the new queue"""
 rQueueC.extend(rQueueM)
 rQueueC = sorted(rQueueC,key=attrgetter('at'))	
 
+print '\n'
 for i in xrange(len(rQueueC)):
-	print 'c%d : %d %d %d %d' % (i,rQueueC[i].at,rQueueC[i].size,rQueueC[i].left,rQueueC[i].miss)
+	print 'c%d : %d %d %d %d %d' % (i,rQueueC[i].at,rQueueC[i].size,rQueueC[i].left,rQueueC[i].miss,rQueueC[i].false)
 
+"""schedule queue_c"""
+#for j in xrange(T+1):
 

@@ -24,7 +24,8 @@ class Request(object):
 		self.sizegot= 0				#data size in T
 		self.state 	= 0				#process state
 		self.left 	= 0				#left size at timeslot j
-		self.miss	= 0
+		self.miss	= 0				#flag of miss request
+		self.false	= 0				#flag of false request
 		self.pstate	= range(T+1)	#prefetch state
 		self.ab 	= range(T+1)	#bandwidth for ri at timeslot j in queue A
 		self.bb 	= range(T+1)	#bandwidth for ri at timeslot j in queue B
