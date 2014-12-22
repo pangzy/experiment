@@ -162,19 +162,23 @@ precise = 0.2
 falseCount = int((1.0-precise)*N)
 hitCount = N-falseCount
 missCount = int(((1.0-recall)/recall)*hitCount)
-deltaT = T
+plusT = T
+deltaT = 5
+atDisturbancePercent = 0.2
+atDisturbanceCount = int(N*atDisturbancePercent)
 
 """evaluation queues"""
 rQueueC = range(N)
 rQueueM = range(missCount)
 
 for i in xrange(len(rQueueC)):
-	rQueueC[i] = Request(T+deltaT)
+	rQueueC[i] = Request(T+plusT)
 
 for i in xrange(len(rQueueM)):
-	rQueueM[i] = Request(T+deltaT)
+	rQueueM[i] = Request(T+plusT)
 
-"""miss and false data genaratation"""
+"""miss and false data genaratation
+   generate missed request queue"""
 missDataGen = DataGenerator(missCount,T)
 missDataGen.genReqArrivalTime(missCount,T)
 missDataGen.sortReqArrivalTime()
@@ -186,7 +190,7 @@ for i in xrange(len(rQueueM)):
 	rQueueM[i].left = rQueueM[i].size
 	rQueueM[i].miss = 1
 
-#false flag
+"""add false flag on stochastic request"""
 for i in random.sample(range(N),falseCount):
 	rQueueC[i].false = 1
 
@@ -206,6 +210,21 @@ for i in xrange(len(rQueueC)):
 
 	for j in xrange(T+1):
 		rQueueC[i].bb[j] = rQueueB[i].bb[j]
+
+"""add deltaT Disturbance on stochastic request"""
+for i in random.sample(range(N),atDisturbanceCount):
+	print "before: r%d : %d" % (i,rQueueC[i].at)
+
+	rQueueC[i].at += random.randint((-1)*deltaT,deltaT)
+	if rQueueC[i].at < 0:
+		rQueueC[i].at = 0
+	elif rQueueC[i].at > T:
+		rQueueC[i].at = T
+	else:
+		pass
+
+	print "after: r%d : %d" % (i,rQueueC[i].at)
+
 
 """mix queue_c and miss data,then sort the new queue"""
 rQueueC.extend(rQueueM)
