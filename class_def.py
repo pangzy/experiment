@@ -16,29 +16,29 @@ def pause():
 class Request(object):
 	"""common base class for all request"""
 
-	def __init__(self,N,T):
+	def __init__(self,T):
 		self.at 	= 0				#arrival time
 		self.ft 	= -1			#finish time
 		self.wt 	= 0				#waiting time
 		self.size 	= 0				#data size
 		self.sizegot= 0				#data size in T
 		self.state 	= 0				#process state
+		self.left 	= 0				#left size at timeslot j
+		self.miss	= 0
 		self.pstate	= range(T+1)	#prefetch state
-		self.left 	= range(T+1)	#left size at timeslot j
 		self.ab 	= range(T+1)	#bandwidth for ri at timeslot j in queue A
 		self.bb 	= range(T+1)	#bandwidth for ri at timeslot j in queue B
 		self.cb 	= range(T+1)	#bandwidth for ri at timeslot j in queue C
 
 		for j in xrange(T+1):
 			self.state 		= 0
-			self.pstate[j]	= 0
-			self.left[j] 	= 0 	
+			self.pstate[j]	= 0	
 			self.ab[j] 		= 0
 			self.bb[j] 		= 0
 			self.cb[j] 		= 0	
 
+'''
 class RQueue(object):
-	"""common base class for request queue"""
 	
 	def __init__(self,N,T):
 		self.length = N
@@ -46,6 +46,7 @@ class RQueue(object):
 
 		for i in xrange(N):
 			self.req[i] = Request(N,T)
+'''
 
 class DataGenerator(object):
 	"""docstring for DataGenerator"""
@@ -107,9 +108,9 @@ class LPSolver(object):
  		
 		for i in xrange(N):
 			rIdx[i] = str(i)
-			ti[i]	= rQueueB.req[i].at
-			si[i]	= rQueueA.req[i].sizegot
-			Ti[i] 	= rQueueA.req[i].ft
+			ti[i]	= rQueueB[i].at
+			si[i]	= rQueueA[i].sizegot
+			Ti[i] 	= rQueueA[i].ft
 		
 		for j in xrange(T+1):
 			tIdx[j] = str(j)
@@ -144,5 +145,5 @@ class LPSolver(object):
 	def exportData(self,rQueueB,N,T):
 		for i in xrange(N):
 			for t in xrange(T+1):
-				rQueueB.req[i].bb[t] = int(value(self.varb[str(i)][str(t)]))			
+				rQueueB[i].bb[t] = int(value(self.varb[str(i)][str(t)]))			
 

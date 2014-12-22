@@ -2,22 +2,27 @@
 # -*- coding: utf-8 -*-
 
 import copy
+from operator import itemgetter, attrgetter 
 from glv import *
 from class_def import *
 
 
 '''generate request queue A data'''
-rQueueA = RQueue(N,T)
-rQueueB = RQueue(N,T)
+rQueueA = range(N)
+rQueueB = range(N)
+
+for i in xrange(N):
+	rQueueA[i] = rQueueB[i] = Request(T)
+
 dGen = DataGenerator(N,T)
 dGen.genReqArrivalTime(N,T)
 dGen.sortReqArrivalTime()
 dGen.genReqSize(N,T)
 
 for i in xrange(N):
-	rQueueA.req[i].at = dGen.reqArrvalTime[i]
-	rQueueA.req[i].size = dGen.reqSize[i]
-	rQueueA.req[i].left = rQueueA.req[i].size
+	rQueueA[i].at = dGen.reqArrvalTime[i]
+	rQueueA[i].size = dGen.reqSize[i]
+	rQueueA[i].left = rQueueA[i].size
 """
 
 '''load request queue A data'''
@@ -27,15 +32,19 @@ TL = dLoader.timeSlotLength
 T  = dLoader.timeSlotNum
 N  = dLoader.reqNum
 
-rQueueA = RQueue(N,T)
-rQueueB = RQueue(N,T)
+rQueueA = range(N)
+rQueueB = range(N)
 
 for i in xrange(N):
-	rQueueA.req[i].at = dLoader.reqArrvalTime[i]
-	rQueueA.req[i].size = dLoader.reqSize[i]
-	rQueueA.req[i].left = rQueueA.req[i].size
+	rQueueA[i] = rQueueB[i] = Request(T)
+
+for i in xrange(N):
+	rQueueA[i].at = dLoader.reqArrvalTime[i]
+	rQueueA[i].size = dLoader.reqSize[i]
+	rQueueA[i].left = rQueueA[i].size
 """
-rQueueB.req = copy.deepcopy(rQueueA.req)
+
+rQueueB = copy.deepcopy(rQueueA)
 
 print 'data genaration finished\n'
 
@@ -48,8 +57,8 @@ reqUnfinishedA = []
 
 for j in xrange(T+1):
 	for i in xrange(N):
-		if rQueueA.req[i].at<=j and rQueueA.req[i].left>0 and rQueueA.req[i].state==0:
-			rQueueA.req[i].state = 1
+		if rQueueA[i].at<=j and rQueueA[i].left>0 and rQueueA[i].state==0:
+			rQueueA[i].state = 1
 			reqActive += 1			
 		else :
 			pass
@@ -57,39 +66,39 @@ for j in xrange(T+1):
 	for i in xrange(N):
 		if reqActive != 0:
 			bActive = B/reqActive
-			rQueueA.req[i].left -= 	bActive*TL*rQueueA.req[i].state			
+			rQueueA[i].left -= 	bActive*TL*rQueueA[i].state			
 		else:
 			pass
 
 	for i in xrange(N):
-		if rQueueA.req[i].left <= 0 and rQueueA.req[i].state==1:
-			rQueueA.req[i].state = 0
-			rQueueA.req[i].ft = j
+		if rQueueA[i].left <= 0 and rQueueA[i].state==1:
+			rQueueA[i].state = 0
+			rQueueA[i].ft = j
 			reqActive -= 1
 
 for i in xrange(N):
-	if rQueueA.req[i].ft != -1 :
-		rQueueA.req[i].wt = rQueueA.req[i].ft-rQueueA.req[i].at+1
-		rQueueA.req[i].sizegot = rQueueA.req[i].size
+	if rQueueA[i].ft != -1 :
+		rQueueA[i].wt = rQueueA[i].ft-rQueueA[i].at+1
+		rQueueA[i].sizegot = rQueueA[i].size
 	else:	 
 		reqUnfinishedA.append(i)
-		rQueueA.req[i].ft = T
-		rQueueA.req[i].wt = T-rQueueA.req[i].at+1
-		rQueueA.req[i].sizegot = rQueueA.req[i].size - rQueueA.req[i].left
+		rQueueA[i].ft = T
+		rQueueA[i].wt = T-rQueueA[i].at+1
+		rQueueA[i].sizegot = rQueueA[i].size - rQueueA[i].left
 
 for i in xrange(N):
-	totalReqSize += rQueueA.req[i].size
-	totalWaitingTimeA += rQueueA.req[i].wt
+	totalReqSize += rQueueA[i].size
+	totalWaitingTimeA += rQueueA[i].wt
 
 print 'queue_a compute finished'
 print 'total request data size : %d' % totalReqSize
 print 'total waiting time in queue a : %d' % totalWaitingTimeA
 print 'unfinished req in queue a : %d\n' % len(reqUnfinishedA)
-pause()
-print 'ri : ti si ft wt'
-for i in xrange(N):
-	print 'r%d : %d %d %d %d' % (i,rQueueA.req[i].at,rQueueA.req[i].size,rQueueA.req[i].ft,rQueueA.req[i].wt)
-pause()
+#pause()
+#print 'ri : ti si ft wt'
+#for i in xrange(N):
+#	print 'r%d : %d %d %d %d' % (i,rQueueA[i].at,rQueueA[i].size,rQueueA[i].ft,rQueueA[i].wt)
+#pause()
 
 """
 solve optimization problem,linear program
@@ -108,27 +117,27 @@ print 'problem solve finisded\n'
 #scheduling queue B
 for j in xrange(T+1):
 	for i in xrange(N):
-		if rQueueB.req[i].left > 0:
-			rQueueB.req[i].left -= rQueueB.req[i].bb[j]*TL
-		elif rQueueB.req[i].ft == -1 and rQueueB.req[i].at >= j:
-			rQueueB.req[i].ft = rQueueB.req[i].at-1
-		elif rQueueB.req[i].ft == -1:
-			rQueueB.req[i].ft = j-1
+		if rQueueB[i].left > 0:
+			rQueueB[i].left -= rQueueB[i].bb[j]*TL
+		elif rQueueB[i].ft == -1 and rQueueB[i].at >= j:
+			rQueueB[i].ft = rQueueB[i].at-1
+		elif rQueueB[i].ft == -1:
+			rQueueB[i].ft = j-1
 		else:
 			pass
 
 for i in xrange(N):
-	if rQueueB.req[i].left > 0:
-		rQueueB.req[i].ft = T
-		rQueueB.req[i].wt = T-rQueueB.req[i].at+1
+	if rQueueB[i].left > 0:
+		rQueueB[i].ft = T
+		rQueueB[i].wt = T-rQueueB[i].at+1
 		reqUnfinishedB.append(i)
 	else:
-		rQueueB.req[i].wt = rQueueB.req[i].ft-rQueueB.req[i].at+1
-		wtSaved += (rQueueA.req[i].wt-rQueueB.req[i].wt)
+		rQueueB[i].wt = rQueueB[i].ft-rQueueB[i].at+1
+		wtSaved += (rQueueA[i].wt-rQueueB[i].wt)
 
 
 for i in xrange(N):
-	print 'r%d : %d %d %d %d' % (i,rQueueB.req[i].at,rQueueB.req[i].size,rQueueB.req[i].ft,rQueueB.req[i].wt)
+	print 'r%d : %d %d %d %d' % (i,rQueueB[i].at,rQueueB[i].size,rQueueB[i].ft,rQueueB[i].wt)
 
 print '\n'
 print 'The optimization problem is solved :'+ LpStatus[pS.probStatus]
@@ -148,41 +157,54 @@ print 'Total prefechting data size : %d,percent : %%%d' % (int(TL*value(pS.prob.
 recall = 0.3
 precise = 0.2
 
-falseCount = int((1-precise)*N)
+falseCount = int((1.0-precise)*N)
 hitCount = N-falseCount
-missCount = int(((1-recall)/recall)*recall)
-
+missCount = int(((1.0-recall)/recall)*hitCount)
 deltaT = T
 
-rQueueC = RQueue(N+missCount,T+deltaT)
-rQueueM = RQueue(missCount,T)
+rQueueC = range(N)
+rQueueM = range(missCount)
+
+for i in xrange(len(rQueueC)):
+	rQueueC[i] = Request(T+deltaT)
+
+for i in xrange(len(rQueueM)):
+	rQueueM[i] = Request(T+deltaT)
 
 missDataGen = DataGenerator(missCount,T)
 missDataGen.genReqArrivalTime(missCount,T)
 missDataGen.sortReqArrivalTime()
 missDataGen.genReqSize(missCount,T)
 
+for i in xrange(len(rQueueM)):
+	rQueueM[i].at = missDataGen.reqArrvalTime[i]
+	rQueueM[i].size = missDataGen.reqSize[i]
+	rQueueM[i].left = rQueueM[i].size
+	rQueueM[i].miss = 1
+
+print '\n'
 print "miss req data generated."
 
-for i in xrange(N):
-	rQueueC.req[i].at = rQueueB.req[i].at
-	rQueueC.req[i].size = rQueueB.req[i].size
-	rQueueC.req[i].left = rQueueC.req[i].size
+#for i in xrange(missCount):
+#	print 'm%d : %d %d %d' % (i,rQueueM[i].at,rQueueM[i].size,rQueueM[i].left)
+
+for i in xrange(len(rQueueC)):
+	rQueueC[i].at = rQueueB[i].at
+	rQueueC[i].size = rQueueB[i].size
+	rQueueC[i].left = rQueueC[i].size
 
 	if i in reqUnfinishedB:
-		rQueueC.req[i].sizegot = rQueueC.req[i].size-rQueueC.req[i].left
+		rQueueC[i].sizegot = rQueueC[i].size-rQueueC[i].left
 	else:
-		rQueueC.req[i].sizegot = rQueueC.req[i].size
+		rQueueC[i].sizegot = rQueueC[i].size
 
 	for j in xrange(T+1):
-		rQueueC.req[i].bb[j] = rQueueB.req[i].bb[j]
-
-for i in xrange(N,N+missCount):
-	rQueueM.req[i].at = missDataGen.reqArrvalTime[i]
-	rQueueM.req[i].size = missDataGen.reqSize[i]
-	rQueueM.req[i].left = rQueueM.req[i].size
-
-print "mixing data ..."
+		rQueueC[i].bb[j] = rQueueB[i].bb[j]
 
 rQueueC.extend(rQueueM)
-rQueueC = sorted(rQueueC,key=attrgetter(req.at))	
+rQueueC = sorted(rQueueC,key=attrgetter('at'))	
+
+for i in xrange(len(rQueueC)):
+	print 'c%d : %d %d %d %d' % (i,rQueueC[i].at,rQueueC[i].size,rQueueC[i].left,rQueueC[i].miss)
+
+
