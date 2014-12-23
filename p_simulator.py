@@ -253,7 +253,6 @@ for i in random.sample(range(N),atDisturbanceCount):
 
 	print "after: r%d : %d" % (i,rQueueC[i].at)
 
-print '\n'
 """mix queue_c and miss data,then sort the new queue"""
 rQueueC.extend(rQueueM)
 rQueueC = sorted(rQueueC,key=attrgetter('at'))	
