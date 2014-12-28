@@ -52,7 +52,7 @@ class ReqDataGenerator(object):
 		self.n = 0
 
 	def genReqArrivalTime(self,T):
-		lamda = 1.0/R  						#the average rate of events per unit of time, lamda = N/T, req/sec
+		lamda = 1.0/F  						#the average rate of events per unit of time, lamda = N/T, req/sec
 		ti = 0.0
 
 		while True:
@@ -134,22 +134,29 @@ class LPSolver(object):
 			2.any i,[0-Ti]  sigma bi(t)*TL>= si
 			3.any i,[0~T-1] sigma bi(t)*TL<= Si
 		------------------------------------"""
+		print "define lp variables"
 		self.varb = LpVariable.dicts('b',(iIdx,tIdx),0,B,'Integer')
+		print "define lp problem"
 		self.prob = LpProblem('Prefetching Schedule',LpMaximize)
-
+		print "define lp objective"
 		self.prob += lpSum([self.varb[i][t] for i in iIdx for t in tIdx if int(t)<ti[int(i)]])
 
+		print "define constraints on B"
 		for t in tIdx:
 		 	self.prob += lpSum([self.varb[i][t] for i in iIdx])<=B
 
+		print "define constraints on si"
 		for i in iIdx:	
 			self.prob += lpSum([self.varb[i][t] for t in tIdx if int(t)<=Ti[int(i)]]) >= ceil(float(si[int(i)])/TL)
 
+		print "define constraints on Si"
 		for i in iIdx:
 			self.prob += lpSum([self.varb[i][t] for t in tIdx]) <= 	ceil(float(Si[int(i)])/TL)
 
 	def solveProblem(self):
-		self.probStatus = self.prob.solve()
+		glpkSolver = solvers.GLPK()
+		print "solve lp problem"
+		self.probStatus = self.prob.solve(glpkSolver)
 
 		print "Problem solved. Status: "+LpStatus[self.probStatus]
 
