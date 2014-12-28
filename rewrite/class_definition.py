@@ -134,7 +134,7 @@ class LPSolver(object):
 			2.any i,[0-Ti]  sigma bi(t)*TL>= si
 			3.any i,[0~T-1] sigma bi(t)*TL<= Si
 		------------------------------------"""
-		print "define lp variables"
+		print "\ndefine lp variables"
 		self.varb = LpVariable.dicts('b',(iIdx,tIdx),0,B,'Integer')
 		print "define lp problem"
 		self.prob = LpProblem('Prefetching Schedule',LpMaximize)
@@ -153,10 +153,17 @@ class LPSolver(object):
 		for i in iIdx:
 			self.prob += lpSum([self.varb[i][t] for t in tIdx]) <= 	ceil(float(Si[int(i)])/TL)
 
-	def solveProblem(self):
-		glpkSolver = solvers.GLPK()
-		print "solve lp problem"
-		self.probStatus = self.prob.solve(glpkSolver)
+	def solveProblem(self,solver="default"):
+		if solver == "default" or solver == "":
+			print "solve lp problem using default solver."
+			self.probStatus = self.prob.solve()
+		elif solver == "GLPK":
+			print "solve lp problem using GLPK solver."
+			glpkSolver = solvers.GLPK()
+			self.probStatus = self.prob.solve(glpkSolver)
+		else:
+			print "wrong solver argument."
+			exit()
 
 		print "Problem solved. Status: "+LpStatus[self.probStatus]
 
