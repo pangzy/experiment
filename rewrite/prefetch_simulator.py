@@ -7,6 +7,7 @@ from random import sample
 from copy import deepcopy
 from global_variable import *
 from class_definition import *
+from xlwt import *
 import sys
 
 """---------------------------------------------------------------------------------------
@@ -211,12 +212,12 @@ print "\n"
 
 """---------------
 debug information
----------------"""
+
 for i,r in enumerate(rQueueB):
 	print "r%3d, ti:%3d, Ti:%3d, wt_saved:[%%%5.1f], si_incr:[%%%.1f]" %\
 	(i,r.at,r.ft,(rQueueA[i].wt-r.wt)*100.0/rQueueA[i].wt,(r.tsize-rQueueA[i].tsize)*100.0/r.size)
 pause()
-
+---------------"""
 
 #evaluation
 """-----------------------------------------
@@ -479,8 +480,9 @@ print "\n"
 
 """---------------
 debug information
----------------"""
+
 for i,r in enumerate(rQueueC):
 	print "r%3d, ti:%3d, Ti:%3d, flag:%5s, wt_saved:[%%%5.1f], si_incr:[%%%.1f]" %\
 	(i,r.at,r.ft,r.flag,(rQueueD[i].wt-r.wt)*100.0/rQueueD[i].wt,(r.tsize-rQueueD[i].tsize)*100.0/r.size)
 pause()
+---------------"""
