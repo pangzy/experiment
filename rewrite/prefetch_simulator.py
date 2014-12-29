@@ -9,13 +9,14 @@ from global_variable import *
 from class_definition import *
 import sys
 
-"""--------------------------
-generate data	: no arguments
-load data		: -l
+"""---------------------------------------------------------------------------------------
+args: data source: -g/-l [lp solver: ""/GLPK] [arrival time distribution: poisson/uniform]
 
-queue_a is the normal predicted request queue without prefetch schedule
-queue_b is the queue after prefetch schedule
---------------------------"""
+queue A is the normal predicted request queue without prefetch schedule
+queue B is the queue after prefetch schedule
+queue C is the evaluation queue with miss and false
+queue D is the evaluation queue with miss and false but without schedule
+---------------------------------------------------------------------------------------"""
 if len(sys.argv)==1:
 	print "need more arguments"
 	print "args: '<data source>' ('<lp solver>' '<data gen distribution>' )"
@@ -123,11 +124,11 @@ for r in rQueueA:
 	totalTSizeA += r.tsize
 	totalWTimeA += r.wt
 
-print "queue A compute finished."
+print "queue A (%d req) compute finished." % len(rQueueA)
 print "unfinished req in queue A: %d" % len(uReqRecorderA)
-print "total request  data size: %d KB" % totalSize
-print "total finished data size: %d KB, percent: %%%.1f" % (totalTSizeA,totalTSizeA*100.0/totalSize)
-print "total waiting time:%d s\n" % totalWTimeA
+print "total request  data size: [%d KB]" % totalSize
+print "total finished data size: [%d KB], percent: [%%%.1f]" % (totalTSizeA,totalTSizeA*100.0/totalSize)
+print "total waiting time: [%d s]\n" % totalWTimeA
 
 """---------------
 debug information
@@ -201,22 +202,21 @@ for i,r in enumerate(rQueueB):
 
 totalWtSavedB = totalWTimeA-totalWTimeB
 
-print "totalWtSavedB: %d, totalWTimeA-totalWTimeB: %d\n" % (totalWtSavedB,totalWTimeA-totalWTimeB)
-print "queue B simulation finished."
+print "queue B (%d req) simulation finished." % len(rQueueB)
 print "unfinished req in queue B  : %d" % len(uReqRecorderB)
-print "total finished data size   : [%d KB], more than queue A: [%%%.1f]" % (totalTSizeB,(totalTSizeB-totalTSizeA)*100.0/totalSize)
-print "total waiting time saved   : [%d s ], less than queue A: [%%%.1f]" % (totalWtSavedB,totalWtSavedB*100.0/totalWTimeA)
+print "total finished data size   : [%d KB], percent: [%%%.1f],increase: [%%%.1f]" % (totalTSizeB,totalTSizeB*100.0/totalSize,(totalTSizeB-totalTSizeA)*100.0/totalSize)
+print "total waiting time saved   : [%d s], percent: [%%%.1f]" % (totalWtSavedB,totalWtSavedB*100.0/totalWTimeA)
 print "total prefetching data size: [%d KB], percent: [%%%.1f]" % (int(TL*value(pS.prob.objective)),int(TL*value(pS.prob.objective))*100.0/totalSize)
 print "\n"
 
 """---------------
 debug information
-
+---------------"""
 for i,r in enumerate(rQueueB):
 	print "r%3d, ti:%3d, Ti:%3d, wt_saved:[%%%5.1f], si_incr:[%%%.1f]" %\
 	(i,r.at,r.ft,(rQueueA[i].wt-r.wt)*100.0/rQueueA[i].wt,(r.tsize-rQueueA[i].tsize)*100.0/r.size)
 pause()
----------------"""
+
 
 #evaluation
 """-----------------------------------------
@@ -232,8 +232,8 @@ precise = hit/N = hit/(hit+false) = (N-f)/N
 hit:miss  = recall :(1-recall) ,recall>0
 hit:false = precise:(1-precise),precise>0
 -----------------------------------------"""
-recall = 0.7		# hit:miss  = recall :(1-recall) ,recall>0
-precise = 0.7		# hit:false = precise:(1-precise),precise>0
+recall = 0.9		# hit:miss  = recall :(1-recall) ,recall>0
+precise = 0.9		# hit:false = precise:(1-precise),precise>0
 
 if recall==0.0:
 	print "recall must be positive."
@@ -283,7 +283,7 @@ rQueueC = sorted(rQueueC,key=attrgetter('at'))
 rQueueD = deepcopy(rQueueC)
 
 print "recall: [%2.1f], precise: [%2.1f]" % (recall,precise)
-print "N: [%3d], hit: [%3d], miss: [%3d], false: [%3d], hit+miss: [%3d]\n" \
+print "N: [%d], hit: [%d], miss: [%d], false: [%d], hit+miss: [%d]\n" \
 	% (N,hitCount,missCount,falseCount,hitCount+missCount)
 
 """---------------
@@ -309,8 +309,6 @@ for t in xrange(TN):
 			dReqRecorder.append(r)
 		else:
 			pass
-
-	print "D: ",t,len(dReqRecorder)
 
 	for r in dReqRecorder:
 		if len(dReqRecorder)==0:
@@ -344,11 +342,11 @@ for r in rQueueD:
 	totalTSizeD += r.tsize
 	totalWTimeD += r.wt
 
-print "queue D simulation finished."
+print "queue D (%d req) simulation finished." % len(rQueueD)
 print "unfinished req in queue D: %d" % len(uReqRecorderD)
-print "total request  data size: %d KB" % totalSizeD
-print "total finished data size: %d KB, percent: %%%.1f" % (totalTSizeD,totalTSizeD*100.0/totalSizeD)
-print "total waiting time:%d s\n" % totalWTimeD
+print "total request  data size: [%d KB]" % totalSizeD
+print "total finished data size: [%d KB], percent: %%%.1f" % (totalTSizeD,totalTSizeD*100.0/totalSizeD)
+print "total waiting time: [%d s]\n" % totalWTimeD
 
 """---------------
 debug information
@@ -363,6 +361,7 @@ simulate the process in queue C
 step1.find prefetch task,miss task and normal task in each slot
 step2.pQueue --> nQueue(arrival time), nQueue --> mQueue(end time)
 step3.simulate data transfer in current slot
+step4.get finished task info
 -------------------------------------------------------------"""
 mReqRecorder  = []
 pReqRecorder  = []
@@ -454,7 +453,7 @@ totalWTimeC   = 0
 totalWtSavedC = 0
 reqWtSavedC   = []
 
-totalWtSavedC_false = 0
+fReqWtSavedC  = 0
 uReqRecorderC = []
 
 for i,r in enumerate(rQueueC):
@@ -464,20 +463,24 @@ for i,r in enumerate(rQueueC):
 	tmp = rQueueD[i].wt - r.wt
 	reqWtSavedC.append(tmp)
 
+	if r.flag == "false":
+		fReqWtSavedC += tmp
+
 totalWtSavedC = totalWTimeD-totalWTimeC
 
-print "queue C simulation finished."
+print "queue C (%d req) simulation finished." % len(rQueueC)
 print "unfinished req in queue C  : %d" % len(uReqRecorderC)
-print "total finished data size   : [%d KB], more than queue D: [%%%.1f]" % (totalTSizeC,(totalTSizeC-totalTSizeD)*100.0/totalSizeD)
-print "total waiting time saved   : [%d s ], less than queue D: [%%%.1f]" % (totalWtSavedC,totalWtSavedC*100.0/totalWTimeD)
+print "total finished data size   : [%d KB], percent: [%%%.1f],increase: [%%%.1f]" % (totalTSizeC,totalTSizeC*100.0/totalSizeD,(totalTSizeC-totalTSizeD)*100.0/totalSizeD)
+print "total waiting time saved   : [%d s], percent: [%%%.1f]" % (totalWtSavedC,totalWtSavedC*100.0/totalWTimeD)
 print "total prefetching data size: [%d KB], percent: [%%%.1f]" % (totalPSize,totalPSize*100.0/totalSizeD)
+print "false  req waiting time saved: [%d s], percent: [%%%.1f]" % (fReqWtSavedC,fReqWtSavedC*100.0/totalWTimeD)
+print "actual req waiting time saved: [%d s], percent: [%%%.1f]" % (totalWtSavedC-fReqWtSavedC,(totalWtSavedC-fReqWtSavedC)*100.0/totalWTimeD)
 print "\n"
 
 """---------------
 debug information
-
+---------------"""
 for i,r in enumerate(rQueueC):
 	print "r%3d, ti:%3d, Ti:%3d, flag:%5s, wt_saved:[%%%5.1f], si_incr:[%%%.1f]" %\
 	(i,r.at,r.ft,r.flag,(rQueueD[i].wt-r.wt)*100.0/rQueueD[i].wt,(r.tsize-rQueueD[i].tsize)*100.0/r.size)
 pause()
----------------"""
