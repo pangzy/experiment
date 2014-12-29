@@ -3,6 +3,8 @@
 
 """import global module"""
 from operator import itemgetter, attrgetter
+from random import sample
+from copy import deepcopy
 from global_variable import *
 from class_definition import *
 import sys
@@ -14,11 +16,24 @@ load data		: -l
 queue_a is the normal predicted request queue without prefetch schedule
 queue_b is the queue after prefetch schedule
 --------------------------"""
+if len(sys.argv)==1:
+	print "need more arguments"
+	print "args: '<data source>' ('<lp solver>' '<data gen distribution>' )"
+	exit()
+else:
+	pass
+
 if sys.argv[1]== "-g" :			#generate
-	dGen = ReqDataGenerator()
-	dGen.genReqArrivalTime(T)
-	dGen.genReqSize()
-	N = dGen.n
+	if len(sys.argv)>=4 and sys.argv[3]=="uniform":
+		dGen = ReqDataGenerator()
+		dGen.genReqArrivalTime(N,T,dis="uniform")
+		dGen.genReqSize(N,dis="uniform")
+	else:
+		dGen = ReqDataGenerator()
+		dGen.genReqArrivalTime(N,T)
+		N = dGen.n
+		dGen.genReqSize(N)	
+
 	rQueueA = []
 	rQueueB = []
 
@@ -58,7 +73,6 @@ else :
 	print 'wrong argument!'
 	exit()
 
-#print 'data ok.'
 print "\nTL:%d,TN:%d,T:%d,F:%.1f,N:%d,MAXS:%d KB \n" % (TL,TN,T,F,N,MAXS)
 
 """--------------------------------------------
@@ -117,10 +131,11 @@ print "total waiting time:%d s\n" % totalWTimeA
 
 """---------------
 debug information
----------------"""
+
 for i,r in enumerate(rQueueA):
 	print "r%3d, ti:%3d, Ti:%3d, wt:%3d, Si:%5d, si:%5d" % (i,r.at,r.ft,r.wt,r.size,r.tsize)
 pause()
+---------------"""
 
 """---------------------------------------
 solve optimization problem,linear program
@@ -180,10 +195,13 @@ for i,r in enumerate(rQueueB):
 	totalTSizeB += r.tsize
 	totalWTimeB += r.wt
 
-	tmp = rQueueA[i].wt-rQueueB[i].wt
+	tmp = rQueueA[i].wt-r.wt
 	reqWtSavedB.append(tmp)
-	totalWtSavedB += tmp
+	#totalWtSavedB += tmp
 
+totalWtSavedB = totalWTimeA-totalWTimeB
+
+print "totalWtSavedB: %d, totalWTimeA-totalWTimeB: %d\n" % (totalWtSavedB,totalWTimeA-totalWTimeB)
 print "queue B simulation finished."
 print "unfinished req in queue B  : %d" % len(uReqRecorderB)
 print "total finished data size   : [%d KB], more than queue A: [%%%.1f]" % (totalTSizeB,(totalTSizeB-totalTSizeA)*100.0/totalSize)
@@ -193,8 +211,273 @@ print "\n"
 
 """---------------
 debug information
----------------"""
+
 for i,r in enumerate(rQueueB):
 	print "r%3d, ti:%3d, Ti:%3d, wt_saved:[%%%5.1f], si_incr:[%%%.1f]" %\
-	(i,r.at,r.ft,(rQueueA[i].wt-r.wt)*100.0/rQueueA[i].wt,(r.tsize-rQueueA[i].tsize)*100.0/totalSize)
+	(i,r.at,r.ft,(rQueueA[i].wt-r.wt)*100.0/rQueueA[i].wt,(r.tsize-rQueueA[i].tsize)*100.0/r.size)
 pause()
+---------------"""
+
+#evaluation
+"""-----------------------------------------
+evaluation
+
+hit+false = N	
+hit+miss = arrived
+hit+false+miss = total
+
+recall = hit/arrived = hit/(hit+miss)
+precise = hit/N = hit/(hit+false) = (N-f)/N
+
+hit:miss  = recall :(1-recall) ,recall>0
+hit:false = precise:(1-precise),precise>0
+-----------------------------------------"""
+recall = 0.7		# hit:miss  = recall :(1-recall) ,recall>0
+precise = 0.7		# hit:false = precise:(1-precise),precise>0
+
+if recall==0.0:
+	print "recall must be positive."
+	exit()
+else:
+	hitCount   = int(precise*N)
+	falseCount = N-hitCount
+	missCount  = int(((1.0-recall)/recall)*hitCount)
+
+rQueueC = []
+rQueueM = []
+rQueueD = []
+
+"""miss requests follow a uniform random distribution"""
+mDataGen = ReqDataGenerator()
+mDataGen.genReqArrivalTime(missCount,T,dis="uniform")
+mDataGen.genReqSize(missCount,dis="uniform")
+
+for i in xrange(missCount):
+	rQueueM.append(Request(TN))
+	rQueueM[i].at = mDataGen.arrivalTime[i]/TL
+	rQueueM[i].size = mDataGen.size[i]
+	rQueueM[i].left = rQueueM[i].size
+	rQueueM[i].flag = "miss"
+
+"""queue C get parameters from queue B"""
+for i in xrange(N):
+	rQueueC.append(Request(TN))
+	rQueueD.append(Request(TN))
+	rQueueC[i].at   = rQueueB[i].at
+	rQueueC[i].bdt  = rQueueB[i].ft
+	rQueueC[i].size = rQueueB[i].size
+	rQueueC[i].left = rQueueC[i].size
+	rQueueC[i].idx  = i
+
+	for t in xrange(TN):
+		rQueueC[i].b[t] = rQueueB[i].b[t]
+
+"""add false flag on random request"""
+for i in sample(range(N),falseCount):
+	rQueueC[i].flag = "false"
+
+"""mix and sort queue C and queue M to get a new queue"""
+rQueueC.extend(rQueueM)
+rQueueC = sorted(rQueueC,key=attrgetter('at'))
+
+rQueueD = deepcopy(rQueueC)
+
+print "recall: [%2.1f], precise: [%2.1f]" % (recall,precise)
+print "N: [%3d], hit: [%3d], miss: [%3d], false: [%3d], hit+miss: [%3d]\n" \
+	% (N,hitCount,missCount,falseCount,hitCount+missCount)
+
+"""---------------
+debug information
+
+for i,r in enumerate(rQueueC):
+	print "r%3d, ti:%3d, flag:%5s, Si:%5d" % (i,r.at,r.flag,r.size)
+pause()
+---------------"""
+
+"""--------------------------------------------
+simulate the process in queue D
+step1.find active process
+step2.simulate data transfer in current second
+step3.get finished task info
+--------------------------------------------"""
+dReqRecorder  = []				#active req recorder
+uReqRecorderD = []				#unfinished req in queue d
+
+for t in xrange(TN):
+	for r in rQueueD:
+		if r.at<=t and r.left>0 and (r in dReqRecorder)==False:
+			dReqRecorder.append(r)
+		else:
+			pass
+
+	print "D: ",t,len(dReqRecorder)
+
+	for r in dReqRecorder:
+		if len(dReqRecorder)==0:
+			break
+		else:
+			r.left -= (B/len(dReqRecorder))*TL
+
+	for i,r in enumerate(dReqRecorder):
+		if r.left <= 0:
+			r.ft = t
+			dReqRecorder.pop(i)
+
+"""compute waiting time and transfered data size for every req in queue D"""
+for r in rQueueD:
+	if r.left <= 0:
+		r.wt = r.ft-r.at+1
+		r.tsize = r.size
+		r.left = 0
+	else:
+		r.ft = TN-1
+		r.wt = r.ft-r.at+1
+		r.tsize = r.size-r.left
+		uReqRecorderD.append(r)
+
+totalSizeD  = 0
+totalTSizeD = 0
+totalWTimeD = 0
+
+for r in rQueueD:
+	totalSizeD  += r.size
+	totalTSizeD += r.tsize
+	totalWTimeD += r.wt
+
+print "queue D simulation finished."
+print "unfinished req in queue D: %d" % len(uReqRecorderD)
+print "total request  data size: %d KB" % totalSizeD
+print "total finished data size: %d KB, percent: %%%.1f" % (totalTSizeD,totalTSizeD*100.0/totalSizeD)
+print "total waiting time:%d s\n" % totalWTimeD
+
+"""---------------
+debug information
+
+for i,r in enumerate(rQueueD):
+	print "r%3d, ti:%3d, Ti:%3d, wt:%3d, Si:%5d, si:%5d" % (i,r.at,r.ft,r.wt,r.size,r.tsize)
+pause()
+---------------"""
+
+"""------------------------------------------------------------
+simulate the process in queue C
+step1.find prefetch task,miss task and normal task in each slot
+step2.pQueue --> nQueue(arrival time), nQueue --> mQueue(end time)
+step3.simulate data transfer in current slot
+-------------------------------------------------------------"""
+mReqRecorder  = []
+pReqRecorder  = []
+nReqRecorder  = []
+sReqRecorder  = []
+uReqRecorderC = []
+totalPSize    = 0
+
+for t in xrange(TN):
+	for r in rQueueC:
+		if r.left>0 \
+		and (r in mReqRecorder) == False \
+		and (r in pReqRecorder) == False \
+		and (r in nReqRecorder) == False: 
+			if   r.flag=="miss" and r.at<=t :
+				mReqRecorder.append(r)
+			elif r.flag!="miss" and r.at>t  :
+				pReqRecorder.append(r)
+			elif r.flag!="miss" and r.at<=t :
+				nReqRecorder.append(r)
+			else:
+				pass
+		else:
+			pass
+
+	for i,r in enumerate(pReqRecorder):
+		if r.at<=t:
+			nReqRecorder.append(pReqRecorder.pop(i))
+			continue
+		else:
+			pass
+
+		if len(mReqRecorder)==0:
+			r.left -= r.b[t]*TL
+			totalPSize += r.b[t]*TL
+		else:
+			pass
+
+	for i,r in enumerate(nReqRecorder):
+		if r.bdt<=t:
+			mReqRecorder.append(nReqRecorder.pop(i))
+			continue
+		else:
+			pass
+
+		if len(mReqRecorder)==0:
+			r.left -= r.b[t]*TL
+		else:
+			r.left -= (B/(len(mReqRecorder)+len(nReqRecorder)))*TL
+
+	for r in mReqRecorder:
+		r.left -= (B/(len(mReqRecorder)+len(nReqRecorder)))*TL
+
+	for r in rQueueC:
+		if r.left<=0 and r.ft == OT:
+			if r.at>t:
+				r.ft = r.at-1
+			else:
+				r.ft = t
+
+			if   r in pReqRecorder:
+				pReqRecorder.pop(pReqRecorder.index(r))
+			elif r in nReqRecorder:
+				nReqRecorder.pop(nReqRecorder.index(r))
+			elif r in mReqRecorder:
+				mReqRecorder.pop(mReqRecorder.index(r))
+			else:
+				pass
+		else:
+			pass	
+
+"""compute waiting time and transfered data size for every req in queue C"""
+for r in rQueueC:
+	if r.left<=0:
+		r.wt = r.ft-r.at+1
+		r.tsize = r.size
+		r.left = 0	
+	else:
+		r.ft = TN-1
+		r.wt = r.ft-r.at+1
+		r.tsize = r.size - r.left
+		uReqRecorderC.append(r)
+
+"""-------------------------------------------------------------------
+C to D : schedule effect ,  count with miss
+-------------------------------------------------------------------"""
+totalTSizeC   = 0
+totalWTimeC   = 0
+totalWtSavedC = 0
+reqWtSavedC   = []
+
+totalWtSavedC_false = 0
+uReqRecorderC = []
+
+for i,r in enumerate(rQueueC):
+	totalTSizeC += r.tsize
+	totalWTimeC += r.wt
+
+	tmp = rQueueD[i].wt - r.wt
+	reqWtSavedC.append(tmp)
+
+totalWtSavedC = totalWTimeD-totalWTimeC
+
+print "queue C simulation finished."
+print "unfinished req in queue C  : %d" % len(uReqRecorderC)
+print "total finished data size   : [%d KB], more than queue D: [%%%.1f]" % (totalTSizeC,(totalTSizeC-totalTSizeD)*100.0/totalSizeD)
+print "total waiting time saved   : [%d s ], less than queue D: [%%%.1f]" % (totalWtSavedC,totalWtSavedC*100.0/totalWTimeD)
+print "total prefetching data size: [%d KB], percent: [%%%.1f]" % (totalPSize,totalPSize*100.0/totalSizeD)
+print "\n"
+
+"""---------------
+debug information
+
+for i,r in enumerate(rQueueC):
+	print "r%3d, ti:%3d, Ti:%3d, flag:%5s, wt_saved:[%%%5.1f], si_incr:[%%%.1f]" %\
+	(i,r.at,r.ft,r.flag,(rQueueD[i].wt-r.wt)*100.0/rQueueD[i].wt,(r.tsize-rQueueD[i].tsize)*100.0/r.size)
+pause()
+---------------"""

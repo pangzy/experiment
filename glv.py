@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #global variable defination
-#TL 	 = TIMESLOT_LENGTH 	= 1         				# second
+#TL  = TIMESLOT_LENGTH 	= 1         				# second
 #T 	 = TIMESLOT_NUMBER 	= 7200		
 #B 	 = BANDWIDTH		= 512						# 512 KBps
 #S 	 = STORAGE			= 50*1024*1024		 		# 50 GB

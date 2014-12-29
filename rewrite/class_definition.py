@@ -26,15 +26,13 @@ class Request(object):
 		self.at = OT			# arrival time
 		self.ft = OT   			# finish time
 		self.wt = 0				# waiting time
-		self.size = 0			# req data size 
+		self.size  = 0			# req data size 
 		self.tsize = 0			# data size of req got in [0,T]
-		self.left = 0 			# left size of req
-		self.flag = HIT			# req category flag : MISS,FALSE,NORMAL
-		self.ssize = 0			# suspend size
-		self.st	= OT  			# suspend start
-		self.se = OT  			# suspend end
-		self.sindex = -1 		# suspend index
-		self.b = range(T)		# bandwidth for ri at timeslot t in queue_b
+		self.left  = 0 			# left size of req
+		self.flag  = "hit"		# req category flag : miss,false,hit
+		self.bdt   = OT  		# bdp,boundary timepoint
+		self.idx   = 0  		# index in queue B
+		self.b  = range(T)		# bandwidth for ri at timeslot t in queue_b
 
 		for t in xrange(T):
 			self.b[t] = 0
@@ -51,25 +49,40 @@ class ReqDataGenerator(object):
 		self.size = []
 		self.n = 0
 
-	def genReqArrivalTime(self,T):
-		lamda = 1.0/F  						#the average rate of events per unit of time, lamda = N/T, req/sec
-		ti = 0.0
-
-		while True:
-			ti += expovariate(lamda)
-			if int(ti) > T:
-				break
-			else:
-				self.n+=1
-				self.arrivalTime.append(int(ti))			
-		#self.arrivalTime.sort()
-
-	def genReqSize(self):
-		if self.n == 0:
-			print "No request in queue."
+	def genReqArrivalTime(self,N,T,f=F,dis="poisson"):
+		if dis=="poisson":
+			print "\npoisson distribution."
+			lamda = 1.0/f  						#the average rate of events per unit of time, lamda = N/T, req/sec
+			ti = 0.0
+			while True:
+				ti += expovariate(lamda)
+				if int(ti) > T:
+					break
+				else:
+					self.n+=1
+					self.arrivalTime.append(int(ti))
+		elif dis=="uniform":
+			print "uniform random distribution."
+			for i in xrange(N):
+				self.arrivalTime.append(randint(0,T))
+			self.arrivalTime.sort()
 		else:
-			for i in xrange(self.n):
+			print "wrong distribution."
+			exit()
+
+	def genReqSize(self,N,dis="poisson"):
+		if dis=="poisson":
+			if self.n == 0:
+				print "No request in queue."
+			else:
+				for i in xrange(self.n):
+					self.size.append(randint(MINS,MAXS))
+		elif dis=="uniform":
+			for i in xrange(N):
 				self.size.append(randint(MINS,MAXS))
+		else:
+			print "wrong distribution."
+			exit()
 
 class ReqDataLoader(object):
 	def __init__(self,TL):
