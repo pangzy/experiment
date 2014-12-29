@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 
 """global variables definition"""
-TL 	 = TIMESLOT_LENGTH 	= 10         	# second
+TL 	 = TIMESLOT_LENGTH 	= 20         	# second
 TN 	 = TIMESLOT_NUMBER 	= 360			# 
 T    = TIME 			= TN*TL         # TN*TL = total time in time zone
-F    = REQUEST_FREQUENCY= 20			# request frequency , seconds/req, F=T/N
+F    = REQUEST_FREQUENCY= 5				# request frequency , seconds/req, F=T/N
 N    = REQUEST_NUMBER	= (T/F)			# request number in queue_a
-B 	 = BANDWIDTH		= 512.0			# KB/s
+B 	 = BANDWIDTH		= 512			# KB/s
 MAXS = MAX_SINGLE_SIZE	= 1*1024		# KB
 MINS = MIN_SINGLE_SIZE	= 1 			# KB
 

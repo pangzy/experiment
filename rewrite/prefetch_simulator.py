@@ -88,36 +88,39 @@ uReqRecorderA = []				#unfinished req in queue a
 
 for t in xrange(TN):
 	for r in rQueueA:
-		if r.at<=t and r.left>0.0 and (r in aReqRecorder)==False:
+		if r.at<=t and r.left>0 and (r in aReqRecorder)==False:
 			aReqRecorder.append(r)
 		else:
 			pass
 
-	for r in aReqRecorder:
-		if len(aReqRecorder)==0:
-			break
-		else:
-			r.left -= (B/len(aReqRecorder))*TL
+	if len(aReqRecorder)==0:
+		pass
+	else:
+		for r in aReqRecorder:
+			r.left -= (B/len(aReqRecorder))*TL	
 
-	for i,r in enumerate(aReqRecorder):
-		if r.left <= 0.0:
+	for r in aReqRecorder[::-1]:
+		if r.left <= 0:
 			r.ft = t
-			aReqRecorder.pop(i)
+			aReqRecorder.pop(aReqRecorder.index(r))
+		else:
+			pass
 
 """compute waiting time and transfered data size for every req in queue A"""
-for r in rQueueA:
-	if r.left <= 0.0:
+
+for i,r in enumerate(rQueueA):
+	if r.left <= 0:
 		r.wt = r.ft-r.at+1
 		r.tsize = r.size
-		r.left = 0.0
+		r.left = 0
 	else:
 		r.ft = TN-1
 		r.wt = r.ft-r.at+1
 		r.tsize = r.size-r.left
 		uReqRecorderA.append(r)
 
-totalSize   = 0.0
-totalTSizeA = 0.0
+totalSize   = 0
+totalTSizeA = 0
 totalWTimeA = 0
 
 for r in rQueueA:
@@ -127,17 +130,17 @@ for r in rQueueA:
 
 print "queue A (%d req) compute finished." % len(rQueueA)
 print "unfinished req in queue A: %d" % len(uReqRecorderA)
-print "total request  data size: [%.1f KB]" % totalSize
-print "total finished data size: [%.1f KB], percent: [%%%.1f]" % (totalTSizeA,totalTSizeA*100.0/totalSize)
+print "total request  data size: [%d KB]" % totalSize
+print "total finished data size: [%d KB], percent: [%%%.1f]" % (totalTSizeA,totalTSizeA*100.0/totalSize)
 print "total waiting time: [%d s]\n" % totalWTimeA
 
 """---------------
 debug information
----------------"""
-for i,r in enumerate(rQueueA):
-	print "r%3d, ti:%3d, Ti:%3d, wt:%3d, Si:%5.1f, si:%5.1f" % (i,r.at,r.ft,r.wt,r.size,r.tsize)
-pause()
 
+for i,r in enumerate(rQueueA):
+	print "r%3d, ti:%3d, Ti:%3d, wt:%3d, Si:%5d, si:%5d, left:%5d" % (i,r.at,r.ft,r.wt,r.size,r.tsize,r.left)
+pause()
+---------------"""
 
 """---------------------------------------
 solve optimization problem,linear program
@@ -161,13 +164,13 @@ step2.get finished task info
 --------------------------------------------"""
 for t in xrange(TN):
 	for r in rQueueB:
-		if r.left>0.0:
+		if r.left>0:
 			r.left -= r.b[t]*TL
 		else:
 			pass
 
 	for r in rQueueB:
-		if r.left<=0.0 and r.ft == OT:
+		if r.left<=0 and r.ft == OT:
 			if r.at>t:
 				r.ft = r.at-1
 			else:
@@ -176,17 +179,18 @@ for t in xrange(TN):
 			pass
 
 """compute waiting time and transfered data size for every req in queue B"""
-totalTSizeB   = 0.0
+totalTSizeB   = 0
 totalWTimeB   = 0
 totalWtSavedB = 0
+totalPSizeB = 0
 reqWtSavedB	  = []
 uReqRecorderB = []
 
 for r in rQueueB:
-	if r.left<=0.0:
+	if r.left<=0:
 		r.wt = r.ft-r.at+1
 		r.tsize = r.size
-		r.left = 0.0	
+		r.left = 0	
 	else:
 		r.ft = TN-1
 		r.wt = r.ft-r.at+1
@@ -202,22 +206,23 @@ for i,r in enumerate(rQueueB):
 	#totalWtSavedB += tmp
 
 totalWtSavedB = totalWTimeA-totalWTimeB
+totalPSizeB = min(totalSize,int(TL*value(pS.prob.objective)))
 
 print "queue B (%d req) simulation finished." % len(rQueueB)
 print "unfinished req in queue B  : %d" % len(uReqRecorderB)
-print "total finished data size   : [%.1f KB], percent: [%%%.1f],increase: [%%%.1f]" % (totalTSizeB,totalTSizeB*100.0/totalSize,(totalTSizeB-totalTSizeA)*100.0/totalSize)
+print "total finished data size   : [%d KB], percent: [%%%.1f],increase: [%%%.1f]" % (totalTSizeB,totalTSizeB*100.0/totalSize,(totalTSizeB-totalTSizeA)*100.0/totalSize)
 print "total waiting time saved   : [%d s], percent: [%%%.1f]" % (totalWtSavedB,totalWtSavedB*100.0/totalWTimeA)
-print "total prefetching data size: [%.1f KB], percent: [%%%.1f]" % (TL*value(pS.prob.objective),TL*value(pS.prob.objective)*100.0/totalSize)
+print "total prefetching data size: [%d KB], percent: [%%%.1f]" % (totalPSizeB,totalPSizeB*100.0/totalSize)
 print "\n"
 
 """---------------
 debug information
----------------"""
+
 for i,r in enumerate(rQueueB):
 	print "r%3d, ti:%3d, Ti:%3d, wt_saved:[%%%5.1f], si_incr:[%%%.1f]" %\
 	(i,r.at,r.ft,(rQueueA[i].wt-r.wt)*100.0/rQueueA[i].wt,(r.tsize-rQueueA[i].tsize)*100.0/r.size)
 pause()
-
+---------------"""
 
 #evaluation
 """-----------------------------------------
@@ -233,8 +238,8 @@ precise = hit/N = hit/(hit+false) = (N-f)/N
 hit:miss  = recall :(1-recall) ,recall>0
 hit:false = precise:(1-precise),precise>0
 -----------------------------------------"""
-recall = 0.9		# hit:miss  = recall :(1-recall) ,recall>0
-precise = 0.9		# hit:false = precise:(1-precise),precise>0
+recall = 0.8		# hit:miss  = recall :(1-recall) ,recall>0
+precise = 0.8		# hit:false = precise:(1-precise),precise>0
 
 if recall==0.0:
 	print "recall must be positive."
@@ -291,7 +296,7 @@ print "N: [%d], hit: [%d], miss: [%d], false: [%d], hit+miss: [%d]\n" \
 debug information
 
 for i,r in enumerate(rQueueC):
-	print "r%3d, ti:%3d, flag:%5s, Si:%5.1f" % (i,r.at,r.flag,r.size)
+	print "r%3d, ti:%3d, flag:%5s, Si:%5d" % (i,r.at,r.flag,r.size)
 pause()
 ---------------"""
 
@@ -306,7 +311,7 @@ uReqRecorderD = []				#unfinished req in queue d
 
 for t in xrange(TN):
 	for r in rQueueD:
-		if r.at<=t and r.left>0.0 and (r in dReqRecorder)==False:
+		if r.at<=t and r.left>0 and (r in dReqRecorder)==False:
 			dReqRecorder.append(r)
 		else:
 			pass
@@ -317,25 +322,27 @@ for t in xrange(TN):
 		else:
 			r.left -= (B/len(dReqRecorder))*TL
 
-	for i,r in enumerate(dReqRecorder):
-		if r.left <= 0.0:
+	for r in dReqRecorder[::-1]:
+		if r.left <= 0:
 			r.ft = t
-			dReqRecorder.pop(i)
+			dReqRecorder.pop(dReqRecorder.index(r))
+		else:
+			pass
 
 """compute waiting time and transfered data size for every req in queue D"""
 for r in rQueueD:
-	if r.left <= 0.0:
+	if r.left <= 0:
 		r.wt = r.ft-r.at+1
 		r.tsize = r.size
-		r.left = 0.0
+		r.left = 0
 	else:
 		r.ft = TN-1
 		r.wt = r.ft-r.at+1
 		r.tsize = r.size-r.left
 		uReqRecorderD.append(r)
 
-totalSizeD  = 0.0
-totalTSizeD = 0.0
+totalSizeD  = 0
+totalTSizeD = 0
 totalWTimeD = 0
 
 for r in rQueueD:
@@ -345,15 +352,15 @@ for r in rQueueD:
 
 print "queue D (%d req) simulation finished." % len(rQueueD)
 print "unfinished req in queue D: %d" % len(uReqRecorderD)
-print "total request  data size: [%.1f KB]" % totalSizeD
-print "total finished data size: [%.1f KB], percent: %%%.1f" % (totalTSizeD,totalTSizeD*100.0/totalSizeD)
+print "total request  data size: [%d KB]" % totalSizeD
+print "total finished data size: [%d KB], percent: %%%.1f" % (totalTSizeD,totalTSizeD*100.0/totalSizeD)
 print "total waiting time: [%d s]\n" % totalWTimeD
 
 """---------------
 debug information
 
 for i,r in enumerate(rQueueD):
-	print "r%3d, ti:%3d, Ti:%3d, wt:%3d, Si:%5.1f, si:%5.1f" % (i,r.at,r.ft,r.wt,r.size,r.tsize)
+	print "r%3d, ti:%3d, Ti:%3d, wt:%3d, Si:%5d, si:%5d" % (i,r.at,r.ft,r.wt,r.size,r.tsize)
 pause()
 ---------------"""
 
@@ -369,11 +376,11 @@ pReqRecorder  = []
 nReqRecorder  = []
 sReqRecorder  = []
 uReqRecorderC = []
-totalPSize    = 0.0
+totalPSizeC    = 0
 
 for t in xrange(TN):
 	for r in rQueueC:
-		if r.left>0.0 \
+		if r.left>0 \
 		and (r in mReqRecorder) == False \
 		and (r in pReqRecorder) == False \
 		and (r in nReqRecorder) == False: 
@@ -388,22 +395,22 @@ for t in xrange(TN):
 		else:
 			pass
 
-	for i,r in enumerate(pReqRecorder):
+	for r in pReqRecorder[::-1]:
 		if r.at<=t:
-			nReqRecorder.append(pReqRecorder.pop(i))
+			nReqRecorder.append(pReqRecorder.pop(pReqRecorder.index(r)))
 			continue
 		else:
 			pass
 
 		if len(mReqRecorder)==0:
 			r.left -= r.b[t]*TL
-			totalPSize += r.b[t]*TL
+			totalPSizeC += r.b[t]*TL
 		else:
 			pass
 
-	for i,r in enumerate(nReqRecorder):
+	for r in nReqRecorder[::-1]:
 		if r.bdt<=t:
-			mReqRecorder.append(nReqRecorder.pop(i))
+			mReqRecorder.append(nReqRecorder.pop(nReqRecorder.index(r)))
 			continue
 		else:
 			pass
@@ -417,7 +424,7 @@ for t in xrange(TN):
 		r.left -= (B/(len(mReqRecorder)+len(nReqRecorder)))*TL
 
 	for r in rQueueC:
-		if r.left<=0.0 and r.ft == OT:
+		if r.left<=0 and r.ft == OT:
 			if r.at>t:
 				r.ft = r.at-1
 			else:
@@ -436,10 +443,10 @@ for t in xrange(TN):
 
 """compute waiting time and transfered data size for every req in queue C"""
 for r in rQueueC:
-	if r.left<=0.0:
+	if r.left<=0:
 		r.wt = r.ft-r.at+1
 		r.tsize = r.size
-		r.left = 0.0	
+		r.left = 0	
 	else:
 		r.ft = TN-1
 		r.wt = r.ft-r.at+1
@@ -449,7 +456,7 @@ for r in rQueueC:
 """-------------------------------------------------------------------
 C to D : schedule effect ,  count with miss
 -------------------------------------------------------------------"""
-totalTSizeC   = 0.0
+totalTSizeC   = 0
 totalWTimeC   = 0
 totalWtSavedC = 0
 reqWtSavedC   = []
@@ -468,12 +475,13 @@ for i,r in enumerate(rQueueC):
 		fReqWtSavedC += tmp
 
 totalWtSavedC = totalWTimeD-totalWTimeC
+totalPSizeC = min(totalPSizeC,totalSizeD)
 
 print "queue C (%d req) simulation finished." % len(rQueueC)
 print "unfinished req in queue C  : %d" % len(uReqRecorderC)
-print "total finished data size   : [%.1f KB], percent: [%%%.1f],increase: [%%%.1f]" % (totalTSizeC,totalTSizeC*100.0/totalSizeD,(totalTSizeC-totalTSizeD)*100.0/totalSizeD)
+print "total finished data size   : [%d KB], percent: [%%%.1f],increase: [%%%.1f]" % (totalTSizeC,totalTSizeC*100.0/totalSizeD,(totalTSizeC-totalTSizeD)*100.0/totalSizeD)
 print "total waiting time saved   : [%d s], percent: [%%%.1f]" % (totalWtSavedC,totalWtSavedC*100.0/totalWTimeD)
-print "total prefetching data size: [%.1f KB], percent: [%%%.1f]" % (totalPSize,totalPSize*100.0/totalSizeD)
+print "total prefetching data size: [%d KB], percent: [%%%.1f]" % (totalPSizeC,totalPSizeC*100.0/totalSizeD)
 print "false  req waiting time saved: [%d s], percent: [%%%.1f]" % (fReqWtSavedC,fReqWtSavedC*100.0/totalWTimeD)
 print "actual req waiting time saved: [%d s], percent: [%%%.1f]" % (totalWtSavedC-fReqWtSavedC,(totalWtSavedC-fReqWtSavedC)*100.0/totalWTimeD)
 print "\n"

@@ -3,7 +3,7 @@
 
 """class definition"""
 
-from random import randint,expovariate,uniform
+from random import randint,expovariate
 from math import ceil
 from pulp import *
 from xlrd import *
@@ -26,16 +26,16 @@ class Request(object):
 		self.at = OT			# arrival time
 		self.ft = OT   			# finish time
 		self.wt = 0				# waiting time
-		self.size  = 0.0		# req data size 
-		self.tsize = 0.0		# data size of req got in [0,T]
-		self.left  = 0.0		# left size of req
+		self.size  = 0			# req data size 
+		self.tsize = 0			# data size of req got in [0,T]
+		self.left  = 0 			# left size of req
 		self.flag  = "hit"		# req category flag : miss,false,hit
 		self.bdt   = OT  		# bdp,boundary timepoint
 		self.idx   = 0  		# index in queue B
 		self.b  = range(T)		# bandwidth for ri at timeslot t in queue_b
 
 		for t in xrange(T):
-			self.b[t] = 0.0
+			self.b[t] = 0
 
 class ReqDataGenerator(object):
 	"""------------------------------------------------------------------
@@ -76,10 +76,10 @@ class ReqDataGenerator(object):
 				print "No request in queue."
 			else:
 				for i in xrange(self.n):
-					self.size.append(float("%.1f"%uniform(MINS,MAXS)))
+					self.size.append(randint(MINS,MAXS))
 		elif dis=="uniform":
 			for i in xrange(N):
-				self.size.append(float("%.1f"%uniform(MINS,MAXS)))
+				self.size.append(randint(MINS,MAXS))
 		else:
 			print "wrong distribution."
 			exit()
@@ -109,7 +109,7 @@ class ReqDataLoader(object):
 		for i in range(startRow,endRow+1):
 			t = int(timeData[i]*24*60*60) - startTime*60*60
 			self.arrivalTime.append(t)
-			s = float("%.1f"%(sizeData[i]/1024))
+			s = int(ceil(sizeData[i]/1024))
 			self.size.append(s)
 
 class LPSolver(object):
@@ -148,7 +148,7 @@ class LPSolver(object):
 			3.any i,[0~T-1] sigma bi(t)*TL<= Si
 		------------------------------------"""
 		print "\ndefine lp variables"
-		self.varb = LpVariable.dicts('b',(iIdx,tIdx),0,B,cat='Continuous')
+		self.varb = LpVariable.dicts('b',(iIdx,tIdx),0,B,cat='Integer')
 		print "define lp problem"
 		self.prob = LpProblem('Prefetching Schedule',LpMaximize)
 		print "define lp objective"
@@ -160,11 +160,11 @@ class LPSolver(object):
 
 		print "define constraints on si"
 		for i in iIdx:	
-			self.prob += lpSum([self.varb[i][t] for t in tIdx if int(t)<=Ti[int(i)]]) >= si[int(i)]/TL
+			self.prob += lpSum([self.varb[i][t] for t in tIdx if int(t)<=Ti[int(i)]]) >= ceil(float(si[int(i)])/TL)
 
 		print "define constraints on Si"
 		for i in iIdx:
-			self.prob += lpSum([self.varb[i][t] for t in tIdx]) <= Si[int(i)]/TL
+			self.prob += lpSum([self.varb[i][t] for t in tIdx]) <= ceil(float(Si[int(i)])/TL)
 
 	def solveProblem(self,solver="default"):
 		if solver == "default" or solver == "":
@@ -183,4 +183,4 @@ class LPSolver(object):
 	def exportData(self,rQueueB,N,T):
 		for i in xrange(N):
 			for t in xrange(T):
-				rQueueB[i].b[t] = value(self.varb[str(i)][str(t)])
+				rQueueB[i].b[t] = int(ceil(value(self.varb[str(i)][str(t)])))
