@@ -28,14 +28,19 @@ class Request(object):
 		self.wt = 0				# waiting time
 		self.size  = 0			# req data size 
 		self.tsize = 0			# data size of req got in [0,T]
+		self.psize = 0
 		self.left  = 0 			# left size of req
 		self.flag  = "hit"		# req category flag : miss,false,hit
 		self.bdt   = OT  		# bdp,boundary timepoint
 		self.idx   = 0  		# index in queue B
 		self.b  = range(T)		# bandwidth for ri at timeslot t in queue_b
+		self.debug_cb = range(T)
+		self.debug_db = range(T)
 
 		for t in xrange(T):
 			self.b[t] = 0
+			self.debug_cb[t] = 0
+			self.debug_db[t] = 0
 
 class ReqDataGenerator(object):
 	"""------------------------------------------------------------------
@@ -56,7 +61,7 @@ class ReqDataGenerator(object):
 			ti = 0.0
 			while True:
 				ti += expovariate(lamda)
-				if int(ti) > T:
+				if int(ti) >= T:
 					break
 				else:
 					self.n+=1

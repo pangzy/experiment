@@ -106,6 +106,16 @@ for t in xrange(TN):
 		else:
 			pass
 
+	"""---------------
+	debug information
+	---------------"""
+	for r in aReqRecorder:
+		if r.left<=0:
+			print "bug report in queue A."
+			exit()
+		else:
+			pass
+
 """compute waiting time and transfered data size for every req in queue A"""
 
 for i,r in enumerate(rQueueA):
@@ -136,11 +146,11 @@ print "total waiting time: [%d s]\n" % totalWTimeA
 
 """---------------
 debug information
-
+---------------"""
 for i,r in enumerate(rQueueA):
 	print "r%3d, ti:%3d, Ti:%3d, wt:%3d, Si:%5d, si:%5d, left:%5d" % (i,r.at,r.ft,r.wt,r.size,r.tsize,r.left)
 pause()
----------------"""
+
 
 """---------------------------------------
 solve optimization problem,linear program
@@ -166,6 +176,10 @@ for t in xrange(TN):
 	for r in rQueueB:
 		if r.left>0:
 			r.left -= r.b[t]*TL
+			if r.at>t:
+				r.psize += r.b[t]*TL
+			else:
+				pass
 		else:
 			pass
 
@@ -217,12 +231,12 @@ print "\n"
 
 """---------------
 debug information
-
-for i,r in enumerate(rQueueB):
-	print "r%3d, ti:%3d, Ti:%3d, wt_saved:[%%%5.1f], si_incr:[%%%.1f]" %\
-	(i,r.at,r.ft,(rQueueA[i].wt-r.wt)*100.0/rQueueA[i].wt,(r.tsize-rQueueA[i].tsize)*100.0/r.size)
-pause()
 ---------------"""
+for i,r in enumerate(rQueueB):
+	print "r%3d, ti:%3d, Ti:%3d, wt_saved:%%%5.1f, si_incr:%%%5.1f, psize:%5d" %\
+	(i,r.at,r.ft,(rQueueA[i].wt-r.wt)*100.0/rQueueA[i].wt,(r.tsize-rQueueA[i].tsize)*100.0/r.size,r.psize)
+pause()
+
 
 #evaluation
 """-----------------------------------------
@@ -321,11 +335,22 @@ for t in xrange(TN):
 			break
 		else:
 			r.left -= (B/len(dReqRecorder))*TL
+			r.debug_db[t] = B/len(dReqRecorder)
 
 	for r in dReqRecorder[::-1]:
 		if r.left <= 0:
 			r.ft = t
 			dReqRecorder.pop(dReqRecorder.index(r))
+		else:
+			pass
+
+	"""---------------
+	debug information
+	---------------"""
+	for r in dReqRecorder:
+		if r.left<=0:
+			print "bug report in queue D."
+			exit()
 		else:
 			pass
 
@@ -358,11 +383,11 @@ print "total waiting time: [%d s]\n" % totalWTimeD
 
 """---------------
 debug information
-
-for i,r in enumerate(rQueueD):
-	print "r%3d, ti:%3d, Ti:%3d, wt:%3d, Si:%5d, si:%5d" % (i,r.at,r.ft,r.wt,r.size,r.tsize)
-pause()
 ---------------"""
+for i,r in enumerate(rQueueD):
+	print "r%3d, ti:%3d, Ti:%3d, wt:%3d, Si:%5d, si:%5d, flag:%5s" % (i,r.at,r.ft,r.wt,r.size,r.tsize,r.flag)
+pause()
+
 
 """------------------------------------------------------------
 simulate the process in queue C
@@ -404,12 +429,23 @@ for t in xrange(TN):
 
 		if len(mReqRecorder)==0:
 			r.left -= r.b[t]*TL
-			totalPSizeC += r.b[t]*TL
+			r.psize += r.b[t]*TL
+			r.debug_cb[t] = r.b[t]
+		else:
+			pass
+
+	"""---------------
+	debug information
+	---------------"""
+	for r in pReqRecorder:
+		if r.at<=t:
+			print "bug report in pReqRecorder."
+			exit()
 		else:
 			pass
 
 	for r in nReqRecorder[::-1]:
-		if r.bdt<=t:
+		if r.bdt<t:
 			mReqRecorder.append(nReqRecorder.pop(nReqRecorder.index(r)))
 			continue
 		else:
@@ -417,11 +453,24 @@ for t in xrange(TN):
 
 		if len(mReqRecorder)==0:
 			r.left -= r.b[t]*TL
+			r.debug_cb[t] = r.b[t]
 		else:
 			r.left -= (B/(len(mReqRecorder)+len(nReqRecorder)))*TL
+			r.debug_cb[t] = B/(len(mReqRecorder)+len(nReqRecorder))
+
+	"""---------------
+	debug information
+	---------------"""
+	for r in nReqRecorder:
+		if r.bdt<t:
+			print "bug report in nReqRecorder."
+			exit()
+		else:
+			pass
 
 	for r in mReqRecorder:
 		r.left -= (B/(len(mReqRecorder)+len(nReqRecorder)))*TL
+		r.debug_cb[t] = B/(len(mReqRecorder)+len(nReqRecorder))
 
 	for r in rQueueC:
 		if r.left<=0 and r.ft == OT:
@@ -460,13 +509,12 @@ totalTSizeC   = 0
 totalWTimeC   = 0
 totalWtSavedC = 0
 reqWtSavedC   = []
-
 fReqWtSavedC  = 0
-uReqRecorderC = []
 
 for i,r in enumerate(rQueueC):
 	totalTSizeC += r.tsize
 	totalWTimeC += r.wt
+	totalPSizeC += r.psize
 
 	tmp = rQueueD[i].wt - r.wt
 	reqWtSavedC.append(tmp)
@@ -488,9 +536,22 @@ print "\n"
 
 """---------------
 debug information
-
-for i,r in enumerate(rQueueC):
-	print "r%3d, ti:%3d, Ti:%3d, flag:%5s, wt_saved:[%%%5.1f], si_incr:[%%%.1f]" %\
-	(i,r.at,r.ft,r.flag,(rQueueD[i].wt-r.wt)*100.0/rQueueD[i].wt,(r.tsize-rQueueD[i].tsize)*100.0/r.size)
-pause()
 ---------------"""
+for i,r in enumerate(rQueueC):
+	print "r%3d,ti:%3d,Ti:%3d,bdt:%3d,wt_saved:%%%6.1f,si_incr:%%%5.1f,psize:%5d,flag:%5s" %\
+	(i,r.at,r.ft,r.bdt,(rQueueD[i].wt-r.wt)*100.0/rQueueD[i].wt,(r.tsize-rQueueD[i].tsize)*100.0/r.size,r.psize,r.flag)
+	
+for i,r in enumerate(rQueueC):
+	if reqWtSavedC[i]<0:
+		print "\n"
+		print "r%3d,ti:%3d,Ti:%3d,bdt:%3d,Si:%5d,psi:%5d,si:%5d,left:%5d,flag:%5s" % \
+		(i,r.at,r.ft,r.bdt,r.size,r.psize,r.tsize,r.left,r.flag)
+		print "\n"
+		#pause()
+		for t in xrange(TN):
+			print "t:%3d,b:%3d,db:%3d,cb:%3d" % (t,r.b[t],rQueueD[i].debug_db[t],r.debug_cb[t])
+			#for j in xrange(len(rQueueC)):
+			#	if rQueueC[j].b[t]!=0:
+			#		print "r%3d,b:%3d" % (j,rQueueC[j].b[t])
+			#pause()
+		
