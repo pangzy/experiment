@@ -143,9 +143,9 @@ for r in rQueueA:
 
 print "queue A (%d req) compute finished." % len(rQueueA)
 print "unfinished req in queue A: %d" % len(uReqRecorderA)
-print "total request  data size: [%d KB]" % totalSize
-print "total finished data size: [%d KB], percent: [%.1f%%]" % (totalTSizeA,totalTSizeA*100.0/totalSize)
-print "total waiting time: [%d s]\n" % totalWTimeA
+print "total request  data size: %d KB" % totalSize
+print "total finished data size: %d KB, percent: %.1f%%" % (totalTSizeA,totalTSizeA*100.0/totalSize)
+print "total waiting time: %d s\n" % totalWTimeA
 
 """---------------
 debug information
@@ -227,9 +227,9 @@ totalPSizeB = min(totalSize,int(TL*value(pS.prob.objective)))
 
 print "queue B (%d req) simulation finished." % len(rQueueB)
 print "unfinished req in queue B  : %d" % len(uReqRecorderB)
-print "total finished data size   : [%d KB], percent: [%.1f%%],increase: [%.1f%%]" % (totalTSizeB,totalTSizeB*100.0/totalSize,(totalTSizeB-totalTSizeA)*100.0/totalSize)
-print "total waiting time saved   : [%d s], percent: [%.1f%%]" % (totalWtSavedB,totalWtSavedB*100.0/totalWTimeA)
-print "total prefetching data size: [%d KB], percent: [%.1f%%]" % (totalPSizeB,totalPSizeB*100.0/totalSize)
+print "total finished data size   : %d KB, percent: %.1f%%,increase: %.1f%%" % (totalTSizeB,totalTSizeB*100.0/totalSize,(totalTSizeB-totalTSizeA)*100.0/totalSize)
+print "total waiting time saved   : %d s, percent: %.1f%%" % (totalWtSavedB,totalWtSavedB*100.0/totalWTimeA)
+print "total prefetching data size: %d KB, percent: %.1f%%" % (totalPSizeB,totalPSizeB*100.0/totalSize)
 print "\n"
 
 """---------------
@@ -305,8 +305,8 @@ rQueueC = sorted(rQueueC,key=attrgetter('at'))
 
 rQueueD = deepcopy(rQueueC)
 
-print "recall: [%2.1f], precise: [%2.1f]" % (recall,precise)
-print "N: [%d], hit: [%d], miss: [%d], false: [%d], hit+miss: [%d]\n" \
+print "recall: %2.1f, precise: %2.1f" % (recall,precise)
+print "N: %d, hit: %d, miss: %d, false: %d, hit+miss: %d\n" \
 	% (N,hitCount,missCount,falseCount,hitCount+missCount)
 
 """---------------
@@ -380,9 +380,9 @@ for r in rQueueD:
 
 print "queue D (%d req) simulation finished." % len(rQueueD)
 print "unfinished req in queue D: %d" % len(uReqRecorderD)
-print "total request  data size: [%d KB]" % totalSizeD
-print "total finished data size: [%d KB], percent: %.1f%%" % (totalTSizeD,totalTSizeD*100.0/totalSizeD)
-print "total waiting time: [%d s]\n" % totalWTimeD
+print "total request  data size: %d KB" % totalSizeD
+print "total finished data size: %d KB, percent: %.1f%%" % (totalTSizeD,totalTSizeD*100.0/totalSizeD)
+print "total waiting time: %d s\n" % totalWTimeD
 
 """---------------
 debug information
