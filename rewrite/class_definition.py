@@ -103,12 +103,12 @@ class ReqDataLoader(object):
 		table	 = xlsFile.sheet_by_index(1)
 		timeData = table.col_values(1)
 		sizeData = table.col_values(2)
-		startRow = 514
-		endRow	 = 636
+		startRow = 676
+		endRow	 = 708
 		self.n	 = endRow-startRow+1
 		startTime 	= int(timeData[startRow]*24)
 		endTime 	= int(timeData[endRow]*24)+1
-		self.tn 	= int(ceil((endTime-startTime)*3600/float(sefl.tl)))
+		self.tn 	= int(ceil((endTime-startTime)*3600/float(self.tl)))
 		self.t  	= (endTime-startTime)*3600
 
 		for i in range(startRow,endRow+1):
