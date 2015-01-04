@@ -3,12 +3,12 @@
 
 """global variables definition"""
 TL 	 = TIMESLOT_LENGTH 	= 1         	# second
-TN 	 = TIMESLOT_NUMBER 	= 600			# 
+TN 	 = TIMESLOT_NUMBER 	= 1800			# 
 T    = TIME 			= TN*TL         # TN*TL = total time in time zone
 F    = REQUEST_FREQUENCY= 10			# request frequency , seconds/req, F=T/N
 N    = REQUEST_NUMBER	= (T/F)			# request number in queue_a
 B 	 = BANDWIDTH		= 512			# KB/s
-MAXS = MAX_SINGLE_SIZE	= 400			# KB
+MAXS = MAX_SINGLE_SIZE	= 15*1024		# KB
 MINS = MIN_SINGLE_SIZE	= 1 			# KB
 
 DATAFILEPATH = 'D:\Experiment\prefetching-simulation\data2.xls'

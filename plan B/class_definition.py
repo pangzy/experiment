@@ -36,9 +36,11 @@ class Request(object):
 		self.b  = range(T)		# bandwidth for ri at timeslot t in queue_b
 		self.debug_cb = range(T)
 		self.debug_db = range(T)
+		self.debug_b  = range(T)
 
 		for t in xrange(T):
 			self.b[t] = 0
+			self.debug_b[t]  = 0
 			self.debug_cb[t] = 0
 			self.debug_db[t] = 0
 
@@ -149,8 +151,8 @@ class LPSolver(object):
 		
 		constraints: 
 			1.any t,[0~N-1] sigma bi(t)   <= B
-			2.any i,[0-Ti]  sigma bi(t)*TL>= si
-			3.any i,[0~T-1] sigma bi(t)*TL<= Si
+			2.any i,[0~T-1] sigma bi(t)*TL<= Si
+			3.any i,bi(t) = 0,if t>=ti
 		------------------------------------"""
 		print "\ndefine lp variables"
 		self.varb = LpVariable.dicts('b',(iIdx,tIdx),0,B,cat='Integer')
@@ -163,13 +165,15 @@ class LPSolver(object):
 		for t in tIdx:
 		 	self.prob += lpSum([self.varb[i][t] for i in iIdx])<=B
 
-		print "define constraints on si"
-		for i in iIdx:	
-			self.prob += lpSum([self.varb[i][t] for t in tIdx if int(t)<=Ti[int(i)]]) >= ceil(float(si[int(i)])/TL)
-
 		print "define constraints on Si"
 		for i in iIdx:
 			self.prob += lpSum([self.varb[i][t] for t in tIdx]) <= ceil(float(Si[int(i)])/TL)
+
+		print "define constraints on bi(t)"
+		for i in iIdx:
+			for t in tIdx:
+				if int(t)>=ti[int(i)]: 
+					self.prob += self.varb[i][t] == 0
 
 	def solveProblem(self,solver="default"):
 		if solver == "default" or solver == "":

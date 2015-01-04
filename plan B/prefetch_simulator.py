@@ -53,10 +53,10 @@ if sys.argv[1]== "-g" :			#generate
 
 	"""---------------
 	debug information
-	---------------"""
+	
 	rQueueB[20].size =  rQueueA[20].size = rQueueB[20].left = rQueueA[20].left = 100*1024
 	rQueueB[40].size =  rQueueA[40].size = rQueueB[40].left = rQueueA[40].left = 100*1024
-
+	---------------"""
 elif sys.argv[1]=='-l' :		#load
 	dLoader = ReqDataLoader(TL)
 	dLoader.loadData()
@@ -181,16 +181,45 @@ simulate the process in queue B
 step1.simulate data transfer in current second
 step2.get finished task info
 --------------------------------------------"""
+pReqRecorderB  = []
+nReqRecorderB  = []
+
 for t in xrange(TN):
 	for r in rQueueB:
-		if r.left>0:
-			r.left -= r.b[t]*TL
-			if r.at>t:
-				r.psize += r.b[t]*TL
-			else:
-				pass
+		if r.left>0 \
+		and (r in pReqRecorderB) == False \
+		and (r in nReqRecorderB) == False: 
+			if r.at>t  :
+				pReqRecorderB.append(r)
+			else :
+				nReqRecorderB.append(r)
 		else:
 			pass
+
+	for r in pReqRecorderB[::-1]:
+		if r.at<=t:
+			nReqRecorderB.append(pReqRecorderB.pop(pReqRecorderB.index(r)))
+			continue
+		else:
+			pass
+
+		r.left -= r.b[t]*TL
+		r.psize += r.b[t]*TL
+		r.debug_b[t] = r.b[t]
+
+	"""---------------
+	debug information
+	---------------"""
+	for r in pReqRecorderB:
+		if r.at<=t:
+			print "bug report in pReqRecorderB."
+			exit()
+		else:
+			pass
+
+	for r in nReqRecorderB:
+		r.left -= (B/len(nReqRecorderB))*TL
+		r.debug_b[t] = (B/len(nReqRecorderB))*TL
 
 	for r in rQueueB:
 		if r.left<=0 and r.ft == OT:
@@ -198,8 +227,15 @@ for t in xrange(TN):
 				r.ft = r.at-1
 			else:
 				r.ft = t
+
+			if   r in pReqRecorderB:
+				pReqRecorderB.pop(pReqRecorderB.index(r))
+			elif r in nReqRecorderB:
+				nReqRecorderB.pop(nReqRecorderB.index(r))
+			else:
+				pass
 		else:
-			pass
+			pass	
 
 """compute waiting time and transfered data size for every req in queue B"""
 totalTSizeB   = 0
@@ -223,13 +259,14 @@ for r in rQueueB:
 for i,r in enumerate(rQueueB):
 	totalTSizeB += r.tsize
 	totalWTimeB += r.wt
+	totalPSizeB += r.psize
 
 	tmp = rQueueA[i].wt-r.wt
 	reqWtSavedB.append(tmp)
 	#totalWtSavedB += tmp
 
 totalWtSavedB = totalWTimeA-totalWTimeB
-totalPSizeB = min(totalSize,int(TL*value(pS.prob.objective)))
+totalPSizeB = min(totalSize,totalPSizeB)
 
 print "queue B (%d req) simulation finished." % len(rQueueB)
 print "unfinished req in queue B  : %d" % len(uReqRecorderB)
@@ -300,6 +337,7 @@ for i in xrange(N):
 
 	for t in xrange(TN):
 		rQueueC[i].b[t] = rQueueB[i].b[t]
+		rQueueC[i].debug_b[t] = rQueueB[i].debug_b[t]
 
 """add false flag on random request"""
 for i in sample(range(N),falseCount):
@@ -461,12 +499,8 @@ for t in xrange(TN):
 		else:
 			pass
 
-		if len(mReqRecorder)==0:
-			r.left -= r.b[t]*TL
-			r.debug_cb[t] = r.b[t]
-		else:
-			r.left -= (B/(len(mReqRecorder)+len(nReqRecorder)))*TL
-			r.debug_cb[t] = B/(len(mReqRecorder)+len(nReqRecorder))
+		r.left -= (B/(len(mReqRecorder)+len(nReqRecorder)))*TL
+		r.debug_cb[t] = B/(len(mReqRecorder)+len(nReqRecorder))
 
 	"""---------------
 	debug information
@@ -557,15 +591,16 @@ for i,r in enumerate(rQueueC):
 	(i,r.at,r.ft,r.bdt,(rQueueD[i].wt-r.wt)*100.0/rQueueD[i].wt,(r.tsize-rQueueD[i].tsize)*100.0/r.size,r.psize,r.flag)
 """---------------
 debug information	
+
 for i,r in enumerate(rQueueC):
-	if reqWtSavedC[i]<0:
+	if r.size>=5*1024 and r.psize>0:
 		print "\n"
 		print "r%3d,ti:%3d,Ti:%3d,bdt:%3d,Si:%5d,psi:%5d,si:%5d,left:%5d,flag:%5s" % \
 		(i,r.at,r.ft,r.bdt,r.size,r.psize,r.tsize,r.left,r.flag)
 		print "\n"
 		#pause()
 		for t in xrange(TN):
-			print "t:%3d,b:%3d,db:%3d,cb:%3d" % (t,r.b[t],rQueueD[i].debug_db[t],r.debug_cb[t])
+			print "t:%3d,b:%3d,db:%3d,cb:%3d" % (t,r.debug_b[t],rQueueD[i].debug_db[t],r.debug_cb[t])
 			#for j in xrange(len(rQueueC)):
 			#	if rQueueC[j].b[t]!=0:
 			#		print "r%3d,b:%3d" % (j,rQueueC[j].b[t])
