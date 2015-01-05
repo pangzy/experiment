@@ -86,6 +86,20 @@ else :
 
 print "\nTL:%d,TN:%d,T:%d,F:%.1f,N:%d,MAXS:%d KB \n" % (TL,TN,T,F,N,MAXS)
 
+wb = Workbook()
+sheetA = wb.add_sheet('A')
+
+sheetA.write(0,0,'ri')
+sheetA.write(0,1,'ti')
+sheetA.write(0,2,'Si')
+
+for i,r in enumerate(rQueueA):
+	sheetA.write(i+1,0,i)
+	sheetA.write(i+1,1,r.at)
+	sheetA.write(i+1,2,r.size)
+
+#wb.save('D:\Experiment\prefetching-simulation\data_buffer.xls')
+
 """--------------------------------------------
 simulate the process in queue A
 step1.find active process
@@ -203,9 +217,12 @@ for t in xrange(TN):
 		else:
 			pass
 
-		r.left -= r.b[t]*TL
-		r.psize += r.b[t]*TL
-		r.debug_b[t] = r.b[t]
+		if len(nReqRecorderB)==0:
+			r.left -= r.b[t]*TL
+			r.psize += r.b[t]*TL
+			r.debug_b[t] = r.b[t]
+		else:
+			pass
 
 	"""---------------
 	debug information
@@ -325,6 +342,19 @@ for i in xrange(missCount):
 	rQueueM[i].left = rQueueM[i].size
 	rQueueM[i].flag = "miss"
 
+sheetM = wb.add_sheet('M')
+
+sheetM.write(0,0,'ri')
+sheetM.write(0,1,'ti')
+sheetM.write(0,2,'Si')
+sheetM.write(0,3,'flag')
+
+for i,r in enumerate(rQueueM):
+	sheetM.write(i+1,0,i)
+	sheetM.write(i+1,1,r.at)
+	sheetM.write(i+1,2,r.size)
+	sheetM.write(i+1,3,'miss')
+
 """queue C get parameters from queue B"""
 for i in xrange(N):
 	rQueueC.append(Request(TN))
@@ -348,6 +378,33 @@ rQueueC.extend(rQueueM)
 rQueueC = sorted(rQueueC,key=attrgetter('at'))
 
 rQueueD = deepcopy(rQueueC)
+
+sheetP = wb.add_sheet('P')
+
+sheetP.write(0,0,'TL')
+sheetP.write(1,0,'TN')
+sheetP.write(2,0,'F')
+sheetP.write(3,0,'MAXS')
+sheetP.write(4,0,'MINS')
+sheetP.write(5,0,'QueueA')
+sheetP.write(6,0,'QueueM')
+sheetP.write(7,0,'QueueC')
+sheetP.write(8,0,'recall')
+sheetP.write(9,0,'precise')
+
+sheetP.write(0,1,TL)
+sheetP.write(1,1,TN)
+sheetP.write(2,1,F)
+sheetP.write(3,1,MAXS)
+sheetP.write(4,1,MINS)
+sheetP.write(5,1,len(rQueueA))
+sheetP.write(6,1,len(rQueueM))
+sheetP.write(7,1,len(rQueueC))
+sheetP.write(8,1,recall)
+sheetP.write(9,1,precise)
+
+wb.save('D:\Experiment\prefetching-simulation\data_buffer.xls')
+
 
 print "recall: %2.1f, precise: %2.1f" % (recall,precise)
 print "N: %d, hit: %d, miss: %d, false: %d, hit+miss: %d\n" \
@@ -475,7 +532,7 @@ for t in xrange(TN):
 		else:
 			pass
 
-		if len(mReqRecorder)==0:
+		if (len(mReqRecorder)+len(nReqRecorder))==0:
 			r.left -= r.b[t]*TL
 			r.psize += r.b[t]*TL
 			r.debug_cb[t] = r.b[t]
@@ -583,7 +640,6 @@ print "false  req waiting time saved: %d s, percent: %.1f%%" % (fReqWtSavedC,fRe
 print "actual req waiting time saved: %d s, percent: %.1f%%" % (totalWtSavedC-fReqWtSavedC,(totalWtSavedC-fReqWtSavedC)*100.0/totalWTimeD)
 print "waiting time increased req: %d, percent: %.1f%%" % (len(xReqRecorderC),len(xReqRecorderC)*100.0/len(rQueueC))
 print "\n"
-
 
 
 for i,r in enumerate(rQueueC):
