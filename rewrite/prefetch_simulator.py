@@ -8,6 +8,7 @@ from copy import deepcopy
 from global_variable import *
 from class_definition import *
 from xlwt import *
+from xlrd import *
 import sys
 
 """---------------------------------------------------------------------------------------
@@ -25,6 +26,11 @@ if len(sys.argv)==1:
 else:
 	pass
 
+xls = open_workbook('D:\Experiment\prefetching-simulation\data_buffer.xls')
+a = xls.sheet_by_index(0)
+m = xls.sheet_by_index(1)
+p = xls.sheet_by_index(2)
+
 if sys.argv[1]== "-g" :			#generate
 	if len(sys.argv)>=4 and sys.argv[3]=="uniform":
 		dGen = ReqDataGenerator()
@@ -39,18 +45,36 @@ if sys.argv[1]== "-g" :			#generate
 	rQueueA = []
 	rQueueB = []
 
+	TL = int(p.cell(0,1).value)
+	TN = int(p.cell(1,1).value)
+	F  = int(p.cell(2,1).value)
+	MAXS = int(p.cell(3,1).value)
+	MINS = int(p.cell(4,1).value)
+	N  = int(p.cell(5,1).value)
+
+
 	for i in xrange(N):
 		rQueueA.append(Request(TN))
 		rQueueB.append(Request(TN))
 
-		rQueueA[i].at   = dGen.arrivalTime[i]/TL	# ti --> timeslot_index
-		rQueueA[i].size = dGen.size[i]
+		#rQueueA[i].at   = dGen.arrivalTime[i]/TL	# ti --> timeslot_index
+		#rQueueA[i].size = dGen.size[i]
+		#rQueueA[i].left = rQueueA[i].size
+
+		rQueueA[i].at   = int(a.cell(i+1,1).value)/TL
+		rQueueA[i].size = int(a.cell(i+1,2).value)
 		rQueueA[i].left = rQueueA[i].size
 
 		rQueueB[i].at   = rQueueA[i].at
 		rQueueB[i].size = rQueueA[i].size
 		rQueueB[i].left = rQueueA[i].left
 
+	"""---------------
+	debug information
+	
+	rQueueB[20].size =  rQueueA[20].size = rQueueB[20].left = rQueueA[20].left = 100*1024
+	rQueueB[40].size =  rQueueA[40].size = rQueueB[40].left = rQueueA[40].left = 100*1024
+	---------------"""
 elif sys.argv[1]=='-l' :		#load
 	dLoader = ReqDataLoader(TL)
 	dLoader.loadData()
@@ -149,11 +173,11 @@ print "total waiting time: %d s\n" % totalWTimeA
 
 """---------------
 debug information
-
+---------------"""
 for i,r in enumerate(rQueueA):
 	print "r%3d, ti:%3d, Ti:%3d, wt:%3d, Si:%5d, si:%5d, left:%5d" % (i,r.at,r.ft,r.wt,r.size,r.tsize,r.left)
 pause()
----------------"""
+
 
 """---------------------------------------
 solve optimization problem,linear program
@@ -234,12 +258,12 @@ print "\n"
 
 """---------------
 debug information
-
+---------------"""
 for i,r in enumerate(rQueueB):
 	print "r%3d, ti:%3d, Ti:%3d, wt_saved:%5.1f%%, si_incr:%5.1f%%, psize:%5d" %\
 	(i,r.at,r.ft,(rQueueA[i].wt-r.wt)*100.0/rQueueA[i].wt,(r.tsize-rQueueA[i].tsize)*100.0/r.size,r.psize)
 pause()
----------------"""
+
 
 #evaluation
 """-----------------------------------------
@@ -258,6 +282,9 @@ hit:false = precise:(1-precise),precise>0
 recall = 0.8		# hit:miss  = recall :(1-recall) ,recall>0
 precise = 0.8		# hit:false = precise:(1-precise),precise>0
 
+recall = p.cell(8,1).value
+precise = p.cell(9,1).value
+
 if recall==0.0:
 	print "recall must be positive."
 	exit()
@@ -265,6 +292,8 @@ else:
 	hitCount   = int(precise*N)
 	falseCount = N-hitCount
 	missCount  = int(((1.0-recall)/recall)*hitCount)
+
+missCount = int(p.cell(6,1).value)
 
 rQueueC = []
 rQueueM = []
@@ -277,10 +306,14 @@ mDataGen.genReqSize(missCount,dis="uniform")
 
 for i in xrange(missCount):
 	rQueueM.append(Request(TN))
-	rQueueM[i].at = mDataGen.arrivalTime[i]/TL
-	rQueueM[i].size = mDataGen.size[i]
+	#rQueueM[i].at = mDataGen.arrivalTime[i]/TL
+	#rQueueM[i].size = mDataGen.size[i]
+	#rQueueM[i].left = rQueueM[i].size
+	#rQueueM[i].flag = "miss"
+
+	rQueueM[i].at = int(m.cell(i+1,1).value)
+	rQueueM[i].size = int(m.cell(i+1,2).value)
 	rQueueM[i].left = rQueueM[i].size
-	rQueueM[i].flag = "miss"
 
 """queue C get parameters from queue B"""
 for i in xrange(N):
@@ -386,11 +419,11 @@ print "total waiting time: %d s\n" % totalWTimeD
 
 """---------------
 debug information
-
+---------------"""
 for i,r in enumerate(rQueueD):
 	print "r%3d, ti:%3d, Ti:%3d, wt:%3d, Si:%5d, si:%5d, flag:%5s" % (i,r.at,r.ft,r.wt,r.size,r.tsize,r.flag)
 pause()
----------------"""
+
 
 """------------------------------------------------------------
 simulate the process in queue C
@@ -544,13 +577,13 @@ print "actual req waiting time saved: %d s, percent: %.1f%%" % (totalWtSavedC-fR
 print "waiting time increased req: %d, percent: %.1f%%" % (len(xReqRecorderC),len(xReqRecorderC)*100.0/len(rQueueC))
 print "\n"
 
-"""---------------
-debug information
+
 
 for i,r in enumerate(rQueueC):
 	print "r%3d,ti:%3d,Ti:%3d,bdt:%3d,wt_saved:%6.1f%%,si_incr:%5.1f%%,psize:%5d,flag:%5s" %\
 	(i,r.at,r.ft,r.bdt,(rQueueD[i].wt-r.wt)*100.0/rQueueD[i].wt,(r.tsize-rQueueD[i].tsize)*100.0/r.size,r.psize,r.flag)
-	
+"""---------------
+debug information	
 for i,r in enumerate(rQueueC):
 	if reqWtSavedC[i]<0:
 		print "\n"
