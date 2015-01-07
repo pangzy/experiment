@@ -8,7 +8,7 @@ import xlrd
 #TN = TIMESLOT_NUMBER    = 600       # 1,
 #T  = TIME               = TN * TL   # 2, TN*TL = total time in time zone
 #F  = REQUEST_FREQUENCY  = 10        # 3, request frequency , seconds/req, F=T/N
-#N  = REQUEST_NUMBER     = (T / F)   # 4, request number in queue_a
+#N  = REQUEST_NUMBER     = (T / F)   # 4, request number in a
 #B  = BANDWIDTH          = 512       # 5, KB/s
 #OT = TIME_OUT_OF_RANGE  = -1        # 6, time out of [0,T]
 #MAXS = MAX_SINGLE_SIZE  = 400       # 7, KB

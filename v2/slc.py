@@ -3,13 +3,12 @@
 
 """simulation class"""
 import glv
-import xlrd
-import xlwt
+# import xlrd
+# import xlwt
 import random
 import operator
 import lpc
 import dpc
-
 
 
 def pause():
@@ -36,7 +35,7 @@ class Request(object):
         self.left = 0               # left size
         self.flag = "hit"           # req category flag : miss,false,hit
         self.bdt = ot               # bdp,boundary timepoint
-        self.b = range(tn)          # bandwidth for ri at timeslot t in queue_b
+        self.b = range(tn)          # bandwidth for ri at timeslot t in b
         self.debug_b = range(tn)
 
         for t in xrange(tn):
@@ -249,56 +248,56 @@ class Simulator(object):
                     else:
                         pass
 
-            for r in preq_recorder[::-1]:
-                if r.at <= t:
-                    nreq_recorder.append(preq_recorder.pop(preq_recorder.index(r)))
-                    continue
-                else:
-                    pass
-
-                if len(mreq_recorder) == 0:
-                    r.left -= r.b[t] * tl
-                    r.psize += r.b[t] * tl
-                    r.debug_b = r.b[t]
-                else:
-                    pass
-
-            for r in nreq_recorder[::-1]:
-                if r.bdt < t:
-                    mreq_recorder.append(nreq_recorder.pop(nreq_recorder.index(r)))
-                    continue
-                else:
-                    pass
-
-                if len(mreq_recorder) == 0:
-                    r.left -= r.b[t] * tl
-                    r.debug_b[t] = r.b[t]
-                else:
-                    r.left -= (B / (len(mreq_recorder) + len(nreq_recorder))) * tl
-                    r.debug_b[t] = B / (len(mreq_recorder) + len(nreq_recorder))
-
-            for r in mreq_recorder:
-                r.left -= (B / (len(mreq_recorder) + len(nreq_recorder))) * tl
-                r.debug_b[t] = B / (len(mreq_recorder) + len(nreq_recorder))
-
-            for r in queue:
-                if r.left <= 0 and r.ft == ot:
-                    if r.at > t:
-                        r.ft = r.at - 1
-                    else:
-                        r.ft = t
-
-                    if r in preq_recorder:
-                        preq_recorder.pop(preq_recorder.index(r))
-                    elif r in nreq_recorder:
-                        nreq_recorder.pop(nreq_recorder.index(r))
-                    elif r in mreq_recorder:
-                        mreq_recorder.pop(mreq_recorder.index(r))
+                for r in preq_recorder[::-1]:
+                    if r.at <= t:
+                        nreq_recorder.append(preq_recorder.pop(preq_recorder.index(r)))
+                        continue
                     else:
                         pass
-                else:
-                    pass
-
+    
+                    if len(mreq_recorder) == 0:
+                        r.left -= r.b[t] * tl
+                        r.psize += r.b[t] * tl
+                        r.debug_b[t] = r.b[t]
+                    else:
+                        pass
+    
+                for r in nreq_recorder[::-1]:
+                    if r.bdt < t:
+                        mreq_recorder.append(nreq_recorder.pop(nreq_recorder.index(r)))
+                        continue
+                    else:
+                        pass
+    
+                    if len(mreq_recorder) == 0:
+                        r.left -= r.b[t] * tl
+                        r.debug_b[t] = r.b[t]
+                    else:
+                        r.left -= (B / (len(mreq_recorder) + len(nreq_recorder))) * tl
+                        r.debug_b[t] = B / (len(mreq_recorder) + len(nreq_recorder))
+    
+                for r in mreq_recorder:
+                    r.left -= (B / (len(mreq_recorder) + len(nreq_recorder))) * tl
+                    r.debug_b[t] = B / (len(mreq_recorder) + len(nreq_recorder))
+    
+                for r in queue:
+                    if r.left <= 0 and r.ft == ot:
+                        if r.at > t:
+                            r.ft = r.at - 1
+                        else:
+                            r.ft = t
+    
+                        if r in preq_recorder:
+                            preq_recorder.pop(preq_recorder.index(r))
+                        elif r in nreq_recorder:
+                            nreq_recorder.pop(nreq_recorder.index(r))
+                        elif r in mreq_recorder:
+                            mreq_recorder.pop(mreq_recorder.index(r))
+                        else:
+                            pass
+                    else:
+                        pass
+    
         for r in queue:
             if r.left <= 0:
                 r.wt = r.ft - r.at + 1
@@ -337,4 +336,7 @@ class Simulator(object):
         pass
 
     def draw_chart(self):
+        pass
+
+    def debug(self):
         pass

@@ -24,15 +24,15 @@ pos["size_col"] = args["size_col"]
 recall = args["recall"]
 precise = args["precise"]
 
-queue_a = slc.Queue()
-queue_b = slc.Queue()
+a = slc.Queue()
+b = slc.Queue()
 
 if args["source"] == "g":
-    queue_a.gen_queue(args["dis"])
-    queue_b.inh_queue(queue_a.queue)
+    a.gen_queue(args["dis"])
+    b.inh_queue(a.queue)
 elif args["source"] == "l":
-    queue_a.load_queue(pos)
-    queue_b.inh_queue(queue_a.queue)
+    a.load_queue(pos)
+    b.inh_queue(a.queue)
 elif args["source"] == "r":
     pass
 else:
@@ -40,22 +40,22 @@ else:
     exit()
 
 sim = slc.Simulator()
-sim.process(queue_a.queue)
-sim.solve(queue_a.queue,queue_b.queue)
-sim.process(queue_b.queue, with_schedule=True)
+sim.process(a.queue)
+sim.solve(a.queue,b.queue)
+sim.process(b.queue, with_schedule=True)
 
-queue_c = slc.Queue()
-queue_d = slc.Queue()
+c = slc.Queue()
+d = slc.Queue()
 
 if args["source"] == "r" :
     pass
 else :
-    queue_c.inh_queue(queue_b.queue)
-    queue_c.mix_queue(recall, precise)
-    queue_d.inh_queue(queue_c.queue)
+    c.inh_queue(b.queue)
+    c.mix_queue(recall, precise)
+    d.inh_queue(c.queue)
 
-sim.process(queue_d.queue)
-sim.process(queue_c.queue, with_schedule=True)
+sim.process(d.queue)
+sim.process(c.queue, with_schedule=True)
 
 print "finished."
 
