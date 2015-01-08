@@ -117,6 +117,8 @@ def load_base(args, pos):
     args["t"] = (end_time - start_time) * 3600
     args["tn"] = int(math.ceil(args["t"] / float(args["tl"])))
     args["f"] = args["t"] / args["n"]
+    args["maxs"] = int(max(size[start_row:end_row+1]))
+    args["mins"] = int(min(size[start_row:end_row+1]))
 
     queue = []
     for i in range(start_row, end_row + 1):
@@ -189,7 +191,7 @@ def inh_data(queue1, queue2, args):
                 r.b[t] = queue2[r.id].b[t]
 
 
-def simulate(args, queue, scheduled=False):
+def simulate(args, queue, scheduled=False, perfect=True):
     """simulate request events"""
     tn = args["tn"]
     tl = args["tl"]
@@ -243,9 +245,14 @@ def simulate(args, queue, scheduled=False):
                 if r.at <= t:
                     nreq_recorder.append(preq_recorder.pop(preq_recorder.index(r)))
 
-            for r in nreq_recorder[::-1]:
-                if r.bdt < t:
-                    mreq_recorder.append(nreq_recorder.pop(nreq_recorder.index(r)))
+            if not perfect:
+                for r in nreq_recorder[::-1]:
+                    if r.bdt < t:
+                        mreq_recorder.append(nreq_recorder.pop(nreq_recorder.index(r)))
+
+            if perfect and len(mreq_recorder) != 0:
+                print "schedule wrong."
+                exit()
 
             for r in preq_recorder:
                 if len(mreq_recorder) == 0:
@@ -342,11 +349,15 @@ def schedule(args, queue1, queue2):
 
     print "define constraints on si"
     for i in idx:
+        #print i,int(i),si[int(i)],Ti[int(i)]
+        #print [tl*varb[i][t] for t in tdx if int(t)<=Ti[int(i)]]
+        #pause()
         prob += pulp.lpSum([tl*varb[i][t] for t in tdx if int(t)<=Ti[int(i)]]) >= si[int(i)]
+
 
     print "define constraints on Si"
     for i in idx:
-        prob += pulp.lpSum([tl*varb[i][t] for t in tdx]) <= Si[int(i)]
+        prob += pulp.lpSum([tl*varb[i][t] for t in tdx]) == Si[int(i)]
 
     prob_status = pulp.LpStatusNotSolved
     if args["solver"] == "default" or args["solver"] == "":
@@ -365,6 +376,9 @@ def schedule(args, queue1, queue2):
         for t in xrange(args["tn"]):
             queue2[i].b[t] = int(math.ceil(pulp.value(varb[str(i)][str(t)])))
 
+    #print varb
+    return varb
+
 
 def stats(queue1, u1, queue2, u2, accuracy=(1.0, 1.0)):
     """statistics about schedule"""
@@ -378,7 +392,7 @@ def stats(queue1, u1, queue2, u2, accuracy=(1.0, 1.0)):
     # 6  : total_wtime_decreased
     # 7  : total_psize
     # 8  : miss_wtime_decreased
-    # 9  : false_wtime_decreased
+    # 9  : false_traffic
     # 10 : hit_wtime_decreased
     # 11 : req_decelerated
     # 12 : req_accelerated
@@ -398,7 +412,7 @@ def stats(queue1, u1, queue2, u2, accuracy=(1.0, 1.0)):
         if r.flag == "miss":
             res[8] += queue1[i].wt-r.wt
         elif r.flag == "false":
-            res[9] += queue1[i].wt-r.wt
+            res[9] += r.gsize
         else:
             res[10] += queue1[i].wt-r.wt
 
@@ -413,7 +427,7 @@ def stats(queue1, u1, queue2, u2, accuracy=(1.0, 1.0)):
     res[6] = (res[4]-res[5])*100.0/res[4]
     res[7] = res[7]*100.0/res[0]
     res[8] = res[8]*100.0/res[4]
-    res[9] = res[9]*100.0/res[4]
+    res[9] = res[9]*100.0/res[0]
     res[10] = res[10]*100.0/res[4]
     res[11] = res[11]*100.0/len(queue2)
     res[12] = res[12]*100.0/len(queue2)
@@ -428,12 +442,61 @@ def stats(queue1, u1, queue2, u2, accuracy=(1.0, 1.0)):
     return res
 
 
-def output(args, res1, res2):
-    pass
+def output(args, res, tag="wrong"):
+    """output the simulate result to console and file"""
+
+    print "\nThis is the "+tag+" result."
+    if tag == "perfect" :
+        print "-------------------------------------------------------"
+        print "| parameters:"
+        print "| T: %d*%d, F: %d, N: %d, dis: %s" % (args["tn"],args["tl"],args["f"],args["n"],args["dis"])
+        print "| max size: %.1f KB, min size: %.1f KB" % (args["maxs"]/1024.0, args["mins"]/1024.0)
+        print "| recall : %.1f, precision: %.1f" % (args["recall"], args["precision"])
+    print "-------------------------------------------------------"
+    print "| waiting time decreased for all  : %.1f%%" % res[6]
+    print "| waiting time decreased for hit  : %.1f%%" % res[10]
+    print "| waiting time decreased for miss : %.1f%%" % res[8]
+    print "| accelerated request             : %.1f%%" % res[12]
+    print "| decelerated request             : %.1f%%" % res[11]
+    print "| data prefetched                 : %.1f%%" % res[7]
+    print "| finished data increase          : %.1f%%" % res[3]
+    print "| false traffic ratio             : %.1f%%" % res[9]
+    print "| unfinished req before schedule  : %.1f%%" % res[13]
+    print "| unfinished req after schedule   : %.1f%%" % res[14]
+    print "-------------------------------------------------------"
 
 
-def debug():
-    pass
+def debug(args, q1, q2):
+    """print dedug information on console"""
+    print"\n"
+
+    print "------------------"
+    print "| before schedule."
+    print "-------------------------------------------------------------"
+    for i,r in enumerate(q1):
+        print "r%3d,ti:%3d,Ti:%3d,Si:%7.1fKB,wt:%3d,*:%5s,si:%5.1f" % \
+              (i, r.at, r.ft, r.size/1024.0, r.wt, r.flag, r.gsize*100.0/r.size)
+    print "-------------------------------------------------------------"
+    print "------------------"
+    print "| after schedule."
+    print "----------------------------------------------------------------------------------------------"
+    for i,r in enumerate(q2):
+        print "r%3d,ti:%3d,Ti:%3d,Si:%7.1fKB,wt:%3d,*:%5s,si:%5.1f,wt(-):%5.1f%%,ps:%5.1f%%,si+:%4.1f%%,bdt:%3d"\
+              % (i, r.at, r.ft, r.size/1024.0, r.wt, r.flag, r.gsize*100.0/r.size, (q1[i].wt-r.wt)*100.0/q1[i].wt,
+               r.psize*100.0/r.size, (r.gsize-q1[i].gsize)*100.0/r.size, r.bdt)
+    print "----------------------------------------------------------------------------------------------"
+    pause()
+
+    #print "------------------"
+    #print "| abnormal request"
+    #print "------------------"
+    #for i,r in enumerate(q2):
+    #    if q1[i].wt-r.wt < 0:
+    #        print "r%3d" % i
+    #        for t in xrange(args["t"]):
+    #            print "t:%3d, b:%5.1f, cb:%5.1f, db:%5.1f" % (t, r.b[t]/1024.0, q1[i].debug_b[t]/1024.0, q2[i].debug_b[t]/1024.0)
+    #        pause()
+
 
 class Request(object):
     """class for all requests"""
