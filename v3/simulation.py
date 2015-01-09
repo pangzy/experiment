@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 
 
-import lib
-import copy
-#import pulp
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
+from lib import *
+from copy import deepcopy
+# from pulp import *
 
 
-glbv = lib.load_glbv()
+glbv = load_glbv()
 
 pos = (glbv["sheet_index"], glbv["time_col"], glbv["size_col"], glbv["start_row"], glbv["end_row"])
 accuracy = (glbv["recall"], glbv["precision"])
@@ -17,10 +17,10 @@ base = []
 
 if glbv["source"] == "g":
     print "\ngenerate base data."
-    base = lib.gen_base(glbv)
+    base = gen_base(glbv)
 elif glbv["source"] == "l":
     print "\nload base data."
-    base = lib.load_base(glbv, pos)
+    base = load_base(glbv, pos)
 elif glbv["source"] == "r":
     pass
 else:
@@ -28,15 +28,15 @@ else:
     exit()
 
 print "generate deviation data."
-q_list = lib.gen_deviation(base, glbv, accuracy)
+q_list = gen_deviation(base, glbv, accuracy)
 
 a = q_list[0]  # predicted queue
-b = copy.deepcopy(a)
+b = deepcopy(a)
 glbv["n"] = len(a)
-#tmp_b = copy.deepcopy(b)
+# tmp_b = deepcopy(b)
 
 print "simulate perfect queue before schedule."
-unfinished_a = lib.simulate(glbv, a, scheduled=False, perfect=True)
+unfinished_a = simulate(glbv, a, scheduled=False, perfect=True)
 
 print "schedule perfect queue."
 ti = [r.at for r in a]
@@ -87,54 +87,59 @@ for i in xrange(glbv["n"]):
     for t in xrange(glbv["tn"]):
         b[i].b[t] = int(instance.b[i,t].value)
 
-#v = lib.schedule(glbv, a, tmp_b)
+# v = schedule(glbv, a, tmp_b)
 
-#print result.solution[0].objective
-#print "pulp"
-#print pulp.value(v[1])
+# print result.solution[0].objective
+# print "pulp"
+# print pulp.value(v[1])
 
-#lib.pause()
+# pause()
 
-#lib.validate(glbv, b, tmp_b)
+# validate(glbv, b, tmp_b)
 
-#lib.pause()
+# pause()
 
 print "\nsimulate perfect queue after schedule."
-unfinished_b = lib.simulate(glbv, b, scheduled=True, perfect=True)
-#tmp_unfinished_b = lib.simulate(glbv, tmp_b, scheduled=True, perfect=True)
+unfinished_b = simulate(glbv, b, scheduled=True, perfect=True)
+# tmp_unfinished_b = simulate(glbv, tmp_b, scheduled=True, perfect=True)
 
 c = q_list[1]  # submitted queue
-d = copy.deepcopy(c)
-lib.inh_data(d, b, glbv)
+d = deepcopy(c)
+inh_data(d, b, glbv)
 
-#tmp_d = copy.deepcopy(c)
-#lib.inh_data(tmp_d, tmp_b, glbv)
+# tmp_d = deepcopy(c)
+# inh_data(tmp_d, tmp_b, glbv)
 
 print "simulate imperfect queue before schedule."
-unfinished_c = lib.simulate(glbv, c, scheduled=False, perfect=False)
+unfinished_c = simulate(glbv, c, scheduled=False, perfect=False)
 
 print "simulate imperfect queue after schedule."
-unfinished_d = lib.simulate(glbv, d, scheduled=True, perfect=False)
-#tmp_unfinished_d = lib.simulate(glbv, tmp_d, scheduled=True, perfect=False)
+unfinished_d = simulate(glbv, d, scheduled=True, perfect=False)
+# tmp_unfinished_d = simulate(glbv, tmp_d, scheduled=True, perfect=False)
 
-res_perfect = lib.stats(a, unfinished_a, b, unfinished_b)
-res_imperfect = lib.stats(c, unfinished_c, d, unfinished_d, accuracy)
+res_perfect = stats(a, unfinished_a, b, unfinished_b)
+res_imperfect = stats(c, unfinished_c, d, unfinished_d, accuracy)
 
-lib.output(glbv, res_perfect, "perfect")
-lib.output(glbv, res_imperfect, "imperfect")
+output(glbv, res_perfect, "perfect")
+output(glbv, res_imperfect, "imperfect")
 
-lib.debug(glbv, a, b)
-lib.debug(glbv, c, d)
+if glbv["wrt"] == "y":
+    wrt(glbv, res_perfect, glbv["result1"], 1)
+    wrt(glbv, res_imperfect, glbv["result1"], 2)
 
-#lib.debug(glbv, a, tmp_b)
-#lib.debug(glbv, c, tmp_d)
 
-#print "\n\n"
-#tmp_res_perfect = lib.stats(a, unfinished_a, tmp_b, tmp_unfinished_b)
-#tmp_res_imperfect = lib.stats(c, unfinished_c, tmp_d, tmp_unfinished_d, accuracy)
+# debug(glbv, a, b)
+# debug(glbv, c, d)
 
-#lib.output(glbv, tmp_res_perfect, "perfect")
-#lib.output(glbv, tmp_res_imperfect, "imperfect")
+# debug(glbv, a, tmp_b)
+# debug(glbv, c, tmp_d)
+
+# print "\n\n"
+# tmp_res_perfect = stats(a, unfinished_a, tmp_b, tmp_unfinished_b)
+#t mp_res_imperfect = stats(c, unfinished_c, tmp_d, tmp_unfinished_d, accuracy)
+
+# output(glbv, tmp_res_perfect, "perfect")
+# output(glbv, tmp_res_imperfect, "imperfect")
 
 '''
 print "------------------"
@@ -155,7 +160,7 @@ for i,r in enumerate(d):
 
         print "x: %d, Si: %d, si:%d, a_si:%d" % (x, r.size, r.gsize, a[i].gsize)
 
-        lib.pause()
+        pause()
 '''
 print "\nsimulation finished."
 

@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import xlrd
-import random
-import operator
-import copy
-import math
-import pulp
+from xlrd import *
+from xlwt import *
+from xlutils.copy import copy
+from pulp import *
+from random import *
+from operator import attrgetter
+from copy import deepcopy
+from math import ceil
 
 
-PARAM = "D:\Experiment\prefetching-simulation\data\glbv.xlsx"
+GLBV = "D:\Experiment\prefetching-simulation\data\glbv.xls"
 
 
 def pause():
@@ -20,7 +22,7 @@ def pause():
 def load_glbv():
     """load global variables from .xls"""
 
-    xls = xlrd.open_workbook(PARAM)
+    xls = open_workbook(GLBV)
     table = xls.sheet_by_index(0)
     glbv = {}
 
@@ -37,13 +39,13 @@ def load_glbv():
     return glbv
 
 
-def poisson(glbv):
+def rdm_poi(glbv):
     """generate a integer sequence under poisson distribution"""
     lamda = 1.0/glbv["f"]
     ti = 0.0
     seq = []
     while True:
-        ti += random.expovariate(lamda)
+        ti += expovariate(lamda)
         if int(ti) >= glbv["t"]:
             break
         else:
@@ -52,14 +54,14 @@ def poisson(glbv):
     return seq
 
 
-def uniform(glbv, n, use=""):
+def rdm_uni(glbv, n, use):
     """generate a integer sequence under uniform random distribution"""
     seq = []
     if use == "time":
-        seq = [random.randint(0, glbv["t"]-1) for i in xrange(n)]
+        seq = [randint(0, glbv["t"]-1) for i in xrange(n)]
         seq.sort()
     elif use == "size":
-        seq = [random.randint(glbv["mins"], glbv["maxs"]) for i in xrange(n)]
+        seq = [randint(glbv["mins"], glbv["maxs"]) for i in xrange(n)]
     else:
         print "need a 'use' argument for generate uniform data."
         exit()
@@ -74,12 +76,12 @@ def gen_base(glbv):
     time_seq = []
     size_seq = []
     if glbv["dis"] == "poisson":
-        time_seq = poisson(glbv)
+        time_seq = rdm_poi(glbv)
         glbv["n"] = len(time_seq)
-        size_seq = uniform(glbv, glbv["n"], "size")
+        size_seq = rdm_uni(glbv, glbv["n"], "size")
     elif glbv["dis"] == "uniform":
-        time_seq = uniform(glbv, glbv["n"], "time")
-        size_seq = uniform(glbv, glbv["n"], "size")
+        time_seq = rdm_uni(glbv, glbv["n"], "time")
+        size_seq = rdm_uni(glbv, glbv["n"], "size")
     else:
         print "need an argument for data distribution."
         exit()
@@ -105,7 +107,7 @@ def load_base(glbv, pos):
     start_row = pos[3]
     end_row = pos[4]
 
-    xls_file = xlrd.open_workbook(rfile)
+    xls_file = open_workbook(rfile)
     table = xls_file.sheet_by_index(sheet_index)
     time = table.col_values(time_col)
     size = table.col_values(size_col)
@@ -113,7 +115,7 @@ def load_base(glbv, pos):
     start_time = int(time[start_row]*24*60)
     end_time = int(time[end_row]*24*60)+1
     glbv["t"] = (end_time-start_time)*60
-    glbv["tn"] = int(math.ceil(glbv["t"]/float(glbv["tl"])))
+    glbv["tn"] = int(ceil(glbv["t"]/float(glbv["tl"])))
     glbv["f"] = glbv["t"]/float(glbv["n"])
     glbv["maxs"] = int(max(size[start_row:end_row+1]))
     glbv["mins"] = int(min(size[start_row:end_row+1]))
@@ -143,8 +145,8 @@ def gen_deviation(queue, glbv, accuracy=(1.0, 1.0)):
 
     # false queue
     f_queue = []
-    time_seq = uniform(glbv, false, "time")
-    size_seq = uniform(glbv, false, "size")
+    time_seq = rdm_uni(glbv, false, "time")
+    size_seq = rdm_uni(glbv, false, "size")
     for i in xrange(false):
         f_queue.append(Request(glbv))
         f_queue[i].at = time_seq[i]/glbv["tl"]
@@ -153,10 +155,10 @@ def gen_deviation(queue, glbv, accuracy=(1.0, 1.0)):
         f_queue[i].flag = "false"
 
     # arrival queue
-    for i in random.sample(xrange(len(queue)), miss):
+    for i in sample(xrange(len(queue)), miss):
         queue[i].flag = "miss"
 
-    a_queue = copy.deepcopy(queue)
+    a_queue = deepcopy(queue)
 
     # miss queue
     m_queue = []
@@ -166,16 +168,16 @@ def gen_deviation(queue, glbv, accuracy=(1.0, 1.0)):
 
     # predicted queue
     queue.extend(f_queue)
-    queue = sorted(queue, key=operator.attrgetter("at"))
+    queue = sorted(queue, key=attrgetter("at"))
 
     for i,r in enumerate(queue):
         r.id = i
 
-    p_queue = copy.deepcopy(queue)
+    p_queue = deepcopy(queue)
 
     # submitted queue
     queue.extend(m_queue)
-    queue = sorted(queue, key=operator.attrgetter("at"))
+    queue = sorted(queue, key=attrgetter("at"))
 
     return p_queue, queue, a_queue
 
@@ -325,43 +327,43 @@ def schedule(glbv, queue1, queue2):
             3.any i,[0~T-1] sigma bi(t)*tl<= Si
     ----------------------------------------"""
     print "\ndefine lp variables"
-    varb = pulp.LpVariable.dicts('b', (idx,tdx), 0, glbv["b"], cat='Integer')
+    varb = LpVariable.dicts('b', (idx,tdx), 0, glbv["b"], cat='Integer')
 
     print "define lp problem"
-    prob = pulp.LpProblem('Prefetching Schedule', pulp.LpMaximize)
+    prob = LpProblem('Prefetching Schedule', LpMaximize)
 
     print "define lp objective"
-    prob += pulp.lpSum([tl*varb[i][t] for i in idx for t in tdx if int(t) < ti[int(i)]])
+    prob += lpSum([tl*varb[i][t] for i in idx for t in tdx if int(t) < ti[int(i)]])
 
     print "define constraints on B"
     for t in tdx:
-        prob += pulp.lpSum([varb[i][t] for i in idx]) <= glbv["b"]
+        prob += lpSum([varb[i][t] for i in idx]) <= glbv["b"]
 
     print "define constraints on si"
     for i in idx:
-        prob += pulp.lpSum([tl*varb[i][t] for t in tdx if int(t) <= Ti[int(i)]]) >= si[int(i)]
+        prob += lpSum([tl*varb[i][t] for t in tdx if int(t) <= Ti[int(i)]]) >= si[int(i)]
 
 
     print "define constraints on Si"
     for i in idx:
-        prob += pulp.lpSum([tl*varb[i][t] for t in tdx]) <= Si[int(i)]
+        prob += lpSum([tl*varb[i][t] for t in tdx]) <= Si[int(i)]
 
-    prob_status = pulp.LpStatusNotSolved
+    prob_status = LpStatusNotSolved
     if glbv["solver"] == "default" or glbv["solver"] == "":
         print "solve lp problem using default solver."
         prob_status = prob.solve()
     elif glbv["solver"] == "GLPK":
         print "solve lp problem using GLPK solver."
-        prob_status = prob.solve(pulp.GLPK())
+        prob_status = prob.solve(GLPK())
     else:
         print "wrong solver argument."
         exit()
 
-    print "Problem solved. Status: " + pulp.LpStatus[prob_status]
+    print "Problem solved. Status: " + LpStatus[prob_status]
 
     for i in xrange(glbv["n"]):
         for t in xrange(glbv["tn"]):
-            queue2[i].b[t] = int(math.ceil(pulp.value(varb[str(i)][str(t)])))
+            queue2[i].b[t] = int(ceil(value(varb[str(i)][str(t)])))
 
     return varb, prob.objective
 
@@ -384,8 +386,9 @@ def stats(queue1, u1, queue2, u2, accuracy=(1.0, 1.0)):
     # 12 : req_accelerated
     # 13 : unfinished_req_before
     # 14 : unfinished_req_after
+    # 15 : avg_size
 
-    res = [0 for i in xrange(15)]
+    res = [0 for i in xrange(16)]
 
     for i,r in enumerate(queue2):
         res[0] += r.size
@@ -419,6 +422,7 @@ def stats(queue1, u1, queue2, u2, accuracy=(1.0, 1.0)):
     res[12] = res[12]*100.0/len(queue2)
     res[13] = len(u1)*100.0/len(queue2)
     res[14] = len(u2)*100.0/len(queue2)
+    res[15] = res[0]/len(queue1)
 
     if accuracy == (1.0, 1.0):
         res[8] = 0.0
@@ -452,8 +456,36 @@ def output(glbv, res, tag="wrong"):
     print "-------------------------------------------------------"
 
 
-def wrt(glbv, res, wfile, sheet):
-    pass
+def wrt(glbv, res, res_file, sheet):
+    rb = open_workbook(res_file)
+    rs = rb.sheet_by_index(sheet)
+    wrn = rs.nrows
+    wb = copy(rb)
+    ws = wb.get_sheet(sheet)
+
+    ws.write(wrn, 0, wrn)                                   # round
+    ws.write(wrn, 1, glbv["t"])                             # time
+    ws.write(wrn, 2, glbv["tl"])                            # time slot
+    ws.write(wrn, 3, float("%.1f" % glbv["f"]))             # frequency
+    ws.write(wrn, 4, glbv["n"])                             # request
+    ws.write(wrn, 5, glbv["dis"])                           # distribution
+    ws.write(wrn, 6, float("%.1f" % (glbv["maxs"]/1024.0)))   # max size
+    ws.write(wrn, 7, float("%.1f" % (glbv["mins"]/1024.0)))   # min size
+    ws.write(wrn, 8, float("%.1f" % (res[15]/1024.0)))        # average size
+    ws.write(wrn, 9, glbv["recall"])                        # recall
+    ws.write(wrn, 10, glbv["precision"])                    # precision
+    ws.write(wrn, 11, float("%.1f" % res[6]))               # waiting time decreased for all
+    ws.write(wrn, 12, float("%.1f" % res[10]))              # waiting time decreased for hit
+    ws.write(wrn, 13, float("%.1f" % res[8]))               # waiting time decreased for miss
+    ws.write(wrn, 14, float("%.1f" % res[12]))              # accelerated request
+    ws.write(wrn, 15, float("%.1f" % res[11]))              # decelerated request
+    ws.write(wrn, 16, float("%.1f" % res[7]))               # data prefetched
+    ws.write(wrn, 17, float("%.1f" % res[3]))               # finished data increase
+    ws.write(wrn, 18, float("%.1f" % res[9]))               # false traffic ratio
+    ws.write(wrn, 19, float("%.1f" % res[13]))              # unfinished req before schedule
+    ws.write(wrn, 20, float("%.1f" % res[14]))              # unfinished req after schedule
+
+    wb.save(res_file)
 
 
 def debug(glbv, q1, q2):
