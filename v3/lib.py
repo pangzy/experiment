@@ -9,7 +9,7 @@ import math
 import pulp
 
 
-ARGS1 = "D:\Experiment\prefetching-simulation\data\\args.xlsx"
+PARAM = "D:\Experiment\prefetching-simulation\data\glbv.xlsx"
 
 
 def pause():
@@ -17,34 +17,34 @@ def pause():
         pass
 
 
-def load_args():
-    """load arguments from .xls"""
+def load_glbv():
+    """load global variables from .xls"""
 
-    xls = xlrd.open_workbook(ARGS1)
+    xls = xlrd.open_workbook(PARAM)
     table = xls.sheet_by_index(0)
-    args = {}
+    glbv = {}
 
     for i in xrange(table.nrows):
-        args[table.cell(i, 0).value] = table.cell(i, 1).value
+        glbv[table.cell(i, 0).value] = table.cell(i, 1).value
 
-    for k, v in args.iteritems():
+    for k, v in glbv.iteritems():
         if isinstance(v, float) and k != "recall" and k != "precision":
-            args[k] = int(v)
+            glbv[k] = int(v)
 
-    args["t"] = args["tn"] * args["tl"]
-    args["n"] = args["t"] / args["f"]
+    glbv["t"] = glbv["tn"]*glbv["tl"]
+    glbv["n"] = glbv["t"]/glbv["f"]
 
-    return args
+    return glbv
 
 
-def poisson(args):
+def poisson(glbv):
     """generate a integer sequence under poisson distribution"""
-    lamda = 1.0 / args["f"]
+    lamda = 1.0/glbv["f"]
     ti = 0.0
     seq = []
     while True:
         ti += random.expovariate(lamda)
-        if int(ti) >= args["t"]:
+        if int(ti) >= glbv["t"]:
             break
         else:
             seq.append(int(ti))
@@ -52,16 +52,14 @@ def poisson(args):
     return seq
 
 
-def uniform(args, n, use=""):
+def uniform(glbv, n, use=""):
     """generate a integer sequence under uniform random distribution"""
     seq = []
     if use == "time":
-        for i in xrange(n):
-            seq.append(random.randint(0, args["t"]))
+        seq = [random.randint(0, glbv["t"]-1) for i in xrange(n)]
         seq.sort()
     elif use == "size":
-        for i in xrange(n):
-            seq.append(random.randint(args["mins"], args["maxs"]))
+        seq = [random.randint(glbv["mins"], glbv["maxs"]) for i in xrange(n)]
     else:
         print "need a 'use' argument for generate uniform data."
         exit()
@@ -69,38 +67,38 @@ def uniform(args, n, use=""):
     return seq
 
 
-def gen_base(args):
+def gen_base(glbv):
     """generate arrival queue"""
 
     queue = []
     time_seq = []
     size_seq = []
-    if args["dis"] == "poisson":
-        time_seq = poisson(args)
-        args["n"] = len(time_seq)
-        size_seq = uniform(args, args["n"], "size")
-    elif args["dis"] == "uniform":
-        time_seq = uniform(args, args["n"], "time")
-        size_seq = uniform(args, args["n"], "size")
+    if glbv["dis"] == "poisson":
+        time_seq = poisson(glbv)
+        glbv["n"] = len(time_seq)
+        size_seq = uniform(glbv, glbv["n"], "size")
+    elif glbv["dis"] == "uniform":
+        time_seq = uniform(glbv, glbv["n"], "time")
+        size_seq = uniform(glbv, glbv["n"], "size")
     else:
         print "need an argument for data distribution."
         exit()
 
-    for i in xrange(args["n"]):
-        queue.append(Request(args))
-        queue[i].at = time_seq[i] / args["tl"]
+    for i in xrange(glbv["n"]):
+        queue.append(Request(glbv))
+        queue[i].at = time_seq[i]/glbv["tl"]
         queue[i].size = size_seq[i]
         queue[i].left = queue[i].size
 
     return queue
 
 
-def load_base(args, pos):
+def load_base(glbv, pos):
     """load arrival queue from .xls"""
 
     print "loading data..."
 
-    rfile = args["data1"]
+    rfile = glbv["data1"]
     sheet_index = pos[0]
     time_col = pos[1]
     size_col = pos[2]
@@ -109,28 +107,29 @@ def load_base(args, pos):
 
     xls_file = xlrd.open_workbook(rfile)
     table = xls_file.sheet_by_index(sheet_index)
-    time = table.col_value(time_col)
-    size = table.col_value(size_col)
-    args["n"] = end_row - start_row + 1
-    start_time = int(time[start_row] * 24)
-    end_time = int(time[end_row] * 24) + 1
-    args["t"] = (end_time - start_time) * 3600
-    args["tn"] = int(math.ceil(args["t"] / float(args["tl"])))
-    args["f"] = args["t"] / args["n"]
-    args["maxs"] = int(max(size[start_row:end_row+1]))
-    args["mins"] = int(min(size[start_row:end_row+1]))
+    time = table.col_values(time_col)
+    size = table.col_values(size_col)
+    glbv["n"] = end_row-start_row+1
+    start_time = int(time[start_row]*24*60)
+    end_time = int(time[end_row]*24*60)+1
+    glbv["t"] = (end_time-start_time)*60
+    glbv["tn"] = int(math.ceil(glbv["t"]/float(glbv["tl"])))
+    glbv["f"] = glbv["t"]/float(glbv["n"])
+    glbv["maxs"] = int(max(size[start_row:end_row+1]))
+    glbv["mins"] = int(min(size[start_row:end_row+1]))
 
     queue = []
     for i in range(start_row, end_row + 1):
-        queue.append(Request(args))
-        queue[i].at = (int(time[i] * 24 * 60 * 60) - start_time * 60 * 60) / args["tl"]
-        queue[i].size = int(size[i])
-        queue[i].left = queue[i].size
+        r = Request(glbv)
+        r.at = (int(time[i]*24*60*60)-start_time*60)/glbv["tl"]
+        r.size = int(size[i])
+        r.left = r.size
+        queue.append(r)
 
     return queue
 
 
-def gen_extra(queue, args, accuracy=(1.0, 1.0)):
+def gen_deviation(queue, glbv, accuracy=(1.0, 1.0)):
     """generate deviation data
        input: arrival queue
        output: predicted(hit+false) queue, submitted(hit+false+miss) queue, arrival(hit+miss) queue
@@ -138,17 +137,17 @@ def gen_extra(queue, args, accuracy=(1.0, 1.0)):
 
     recall = accuracy[0]
     precision = accuracy[1]
-    hit = int(recall*args["n"])
-    miss = args["n"]-hit
+    hit = int(recall*glbv["n"])
+    miss = glbv["n"]-hit
     false = int(((1.0-precision)/precision)*hit)
 
     # false queue
     f_queue = []
-    time_seq = uniform(args, false, "time")
-    size_seq = uniform(args, false, "size")
+    time_seq = uniform(glbv, false, "time")
+    size_seq = uniform(glbv, false, "size")
     for i in xrange(false):
-        f_queue.append(Request(args))
-        f_queue[i].at = time_seq[i] / args["tl"]
+        f_queue.append(Request(glbv))
+        f_queue[i].at = time_seq[i]/glbv["tl"]
         f_queue[i].size = size_seq[i]
         f_queue[i].left = f_queue[i].size
         f_queue[i].flag = "false"
@@ -181,22 +180,22 @@ def gen_extra(queue, args, accuracy=(1.0, 1.0)):
     return p_queue, queue, a_queue
 
 
-def inh_data(queue1, queue2, args):
+def inh_data(queue1, queue2, glbv):
     """queue1 inherit from queue2"""
 
     for r in queue1:
-        if r.id != args["ot"]:
+        if r.id != glbv["ot"]:
             r.bdt = queue2[r.id].ft
-            for t in xrange(args["t"]):
+            for t in xrange(glbv["t"]):
                 r.b[t] = queue2[r.id].b[t]
 
 
-def simulate(args, queue, scheduled=False, perfect=True):
+def simulate(glbv, queue, scheduled=False, perfect=True):
     """simulate request events"""
-    tn = args["tn"]
-    tl = args["tl"]
-    B = args["b"]
-    ot = args["ot"]
+    tn = glbv["tn"]
+    tl = glbv["tl"]
+    B = glbv["b"]
+    ot = glbv["ot"]
     ureq_recorder = []
 
     if not scheduled:
@@ -207,8 +206,8 @@ def simulate(args, queue, scheduled=False, perfect=True):
                     nreq_recorder.append(r)
 
             for r in nreq_recorder:
-                r.left -= (B / len(nreq_recorder)) * tl
-                r.debug_b[t] = B / len(nreq_recorder)
+                r.left -= (B/len(nreq_recorder))*tl
+                r.debug_b[t] = B/len(nreq_recorder)
 
             for r in nreq_recorder[::-1]:
                 if r.left <= 0:
@@ -217,13 +216,13 @@ def simulate(args, queue, scheduled=False, perfect=True):
 
         for r in queue:
             if r.left <= 0:
-                r.wt = r.ft - r.at + 1
+                r.wt = r.ft-r.at+1
                 r.gsize = r.size
                 r.left = 0
             else:
-                r.ft = tn - 1
-                r.wt = r.ft - r.at + 1
-                r.gsize = r.size - r.left
+                r.ft = tn-1
+                r.wt = r.ft-r.at+1
+                r.gsize = r.size-r.left
                 ureq_recorder.append(r)
     else:
         preq_recorder = []
@@ -256,26 +255,26 @@ def simulate(args, queue, scheduled=False, perfect=True):
 
             for r in preq_recorder:
                 if len(mreq_recorder) == 0:
-                    r.left -= r.b[t] * tl
-                    r.psize += r.b[t] * tl
+                    r.left -= r.b[t]*tl
+                    r.psize += r.b[t]*tl
                     r.debug_b[t] = r.b[t]
 
             for r in nreq_recorder:
                 if len(mreq_recorder) == 0:
-                    r.left -= r.b[t] * tl
+                    r.left -= r.b[t]*tl
                     r.debug_b[t] = r.b[t]
                 else:
-                    r.left -= (B / (len(mreq_recorder) + len(nreq_recorder))) * tl
-                    r.debug_b[t] = B / (len(mreq_recorder) + len(nreq_recorder))
+                    r.left -= (B/(len(mreq_recorder)+len(nreq_recorder)))*tl
+                    r.debug_b[t] = B/(len(mreq_recorder)+len(nreq_recorder))
 
             for r in mreq_recorder:
-                r.left -= (B / (len(mreq_recorder) + len(nreq_recorder))) * tl
-                r.debug_b[t] = B / (len(mreq_recorder) + len(nreq_recorder))
+                r.left -= (B/(len(mreq_recorder)+len(nreq_recorder)))*tl
+                r.debug_b[t] = B/(len(mreq_recorder)+len(nreq_recorder))
 
             for r in queue:
                 if r.left <= 0 and r.ft == ot:
                     if r.at > t:
-                        r.ft = r.at - 1
+                        r.ft = r.at-1
                     else:
                         r.ft = t
 
@@ -288,38 +287,29 @@ def simulate(args, queue, scheduled=False, perfect=True):
 
         for r in queue:
             if r.left <= 0:
-                r.wt = r.ft - r.at + 1
+                r.wt = r.ft-r.at+1
                 r.gsize = r.size
                 r.left = 0
             else:
-                r.ft = tn - 1
-                r.wt = r.ft - r.at + 1
-                r.gsize = r.size - r.left
+                r.ft = tn-1
+                r.wt = r.ft-r.at+1
+                r.gsize = r.size-r.left
                 ureq_recorder.append(r)
 
     return ureq_recorder
 
 
-def schedule(args, queue1, queue2):
+def schedule(glbv, queue1, queue2):
     """solve lp problem"""
 
-    tl = args["tl"]
-    idx = range(args["n"])
-    tdx = range(args["tn"])
-    ti = range(args["n"])
-    si = range(args["n"])
-    Ti = range(args["n"])
-    Si = range(args["n"])
+    tl = glbv["tl"]
 
-    for i in xrange(args["n"]):
-        ti[i] = queue1[i].at
-        si[i] = queue1[i].gsize
-        Ti[i] = queue1[i].ft
-        Si[i] = queue1[i].size
-        idx[i] = str(i)
-
-    for t in xrange(args["tn"]):
-        tdx[t] = str(t)
+    ti = [r.at for r in queue1]
+    si = [r.gsize for r in queue1]
+    Ti = [r.ft for r in queue1]
+    Si = [r.size for r in queue1]
+    idx = [str(i) for i in xrange(glbv["n"])]
+    tdx = [str(t) for t in xrange(glbv["tn"])]
 
     """----------------------------------------
         PuLP variable definition
@@ -335,35 +325,32 @@ def schedule(args, queue1, queue2):
             3.any i,[0~T-1] sigma bi(t)*tl<= Si
     ----------------------------------------"""
     print "\ndefine lp variables"
-    varb = pulp.LpVariable.dicts('b', (idx,tdx), 0, args["b"], cat='Integer')
+    varb = pulp.LpVariable.dicts('b', (idx,tdx), 0, glbv["b"], cat='Integer')
 
     print "define lp problem"
     prob = pulp.LpProblem('Prefetching Schedule', pulp.LpMaximize)
 
     print "define lp objective"
-    prob += pulp.lpSum([tl*varb[i][t] for i in idx for t in tdx if int(t)<ti[int(i)]])
+    prob += pulp.lpSum([tl*varb[i][t] for i in idx for t in tdx if int(t) < ti[int(i)]])
 
     print "define constraints on B"
     for t in tdx:
-        prob += pulp.lpSum([varb[i][t] for i in idx]) <= args["b"]
+        prob += pulp.lpSum([varb[i][t] for i in idx]) <= glbv["b"]
 
     print "define constraints on si"
     for i in idx:
-        #print i,int(i),si[int(i)],Ti[int(i)]
-        #print [tl*varb[i][t] for t in tdx if int(t)<=Ti[int(i)]]
-        #pause()
-        prob += pulp.lpSum([tl*varb[i][t] for t in tdx if int(t)<=Ti[int(i)]]) >= si[int(i)]
+        prob += pulp.lpSum([tl*varb[i][t] for t in tdx if int(t) <= Ti[int(i)]]) >= si[int(i)]
 
 
     print "define constraints on Si"
     for i in idx:
-        prob += pulp.lpSum([tl*varb[i][t] for t in tdx]) == Si[int(i)]
+        prob += pulp.lpSum([tl*varb[i][t] for t in tdx]) <= Si[int(i)]
 
     prob_status = pulp.LpStatusNotSolved
-    if args["solver"] == "default" or args["solver"] == "":
+    if glbv["solver"] == "default" or glbv["solver"] == "":
         print "solve lp problem using default solver."
         prob_status = prob.solve()
-    elif args["solver"] == "GLPK":
+    elif glbv["solver"] == "GLPK":
         print "solve lp problem using GLPK solver."
         prob_status = prob.solve(pulp.GLPK())
     else:
@@ -372,12 +359,11 @@ def schedule(args, queue1, queue2):
 
     print "Problem solved. Status: " + pulp.LpStatus[prob_status]
 
-    for i in xrange(args["n"]):
-        for t in xrange(args["tn"]):
+    for i in xrange(glbv["n"]):
+        for t in xrange(glbv["tn"]):
             queue2[i].b[t] = int(math.ceil(pulp.value(varb[str(i)][str(t)])))
 
-    #print varb
-    return varb
+    return varb, prob.objective
 
 
 def stats(queue1, u1, queue2, u2, accuracy=(1.0, 1.0)):
@@ -442,16 +428,16 @@ def stats(queue1, u1, queue2, u2, accuracy=(1.0, 1.0)):
     return res
 
 
-def output(args, res, tag="wrong"):
+def output(glbv, res, tag="wrong"):
     """output the simulate result to console and file"""
 
     print "\nThis is the "+tag+" result."
     if tag == "perfect" :
         print "-------------------------------------------------------"
         print "| parameters:"
-        print "| T: %d*%d, F: %d, N: %d, dis: %s" % (args["tn"],args["tl"],args["f"],args["n"],args["dis"])
-        print "| max size: %.1f KB, min size: %.1f KB" % (args["maxs"]/1024.0, args["mins"]/1024.0)
-        print "| recall : %.1f, precision: %.1f" % (args["recall"], args["precision"])
+        print "| T: %d*%d, F: %d, N: %d, dis: %s" % (glbv["tn"],glbv["tl"],glbv["f"],glbv["n"],glbv["dis"])
+        print "| max size: %.1f KB, min size: %.1f KB" % (glbv["maxs"]/1024.0, glbv["mins"]/1024.0)
+        print "| recall : %.1f, precision: %.1f" % (glbv["recall"], glbv["precision"])
     print "-------------------------------------------------------"
     print "| waiting time decreased for all  : %.1f%%" % res[6]
     print "| waiting time decreased for hit  : %.1f%%" % res[10]
@@ -466,7 +452,11 @@ def output(args, res, tag="wrong"):
     print "-------------------------------------------------------"
 
 
-def debug(args, q1, q2):
+def wrt(glbv, res, wfile, sheet):
+    pass
+
+
+def debug(glbv, q1, q2):
     """print dedug information on console"""
     print"\n"
 
@@ -481,7 +471,7 @@ def debug(args, q1, q2):
     print "| after schedule."
     print "----------------------------------------------------------------------------------------------"
     for i,r in enumerate(q2):
-        print "r%3d,ti:%3d,Ti:%3d,Si:%7.1fKB,wt:%3d,*:%5s,si:%5.1f,wt(-):%5.1f%%,ps:%5.1f%%,si+:%4.1f%%,bdt:%3d"\
+        print "r%3d,ti:%3d,Ti:%3d,Si:%7.1fKB,wt:%3d,*:%5s,si:%5.1f,wt-:%5.1f%%,ps:%5.1f%%,si+:%4.1f%%,bdt:%3d"\
               % (i, r.at, r.ft, r.size/1024.0, r.wt, r.flag, r.gsize*100.0/r.size, (q1[i].wt-r.wt)*100.0/q1[i].wt,
                r.psize*100.0/r.size, (r.gsize-q1[i].gsize)*100.0/r.size, r.bdt)
     print "----------------------------------------------------------------------------------------------"
@@ -493,19 +483,61 @@ def debug(args, q1, q2):
     #for i,r in enumerate(q2):
     #    if q1[i].wt-r.wt < 0:
     #        print "r%3d" % i
-    #        for t in xrange(args["t"]):
+    #        for t in xrange(prm["t"]):
     #            print "t:%3d, b:%5.1f, cb:%5.1f, db:%5.1f" % (t, r.b[t]/1024.0, q1[i].debug_b[t]/1024.0, q2[i].debug_b[t]/1024.0)
     #        pause()
+
+
+def validate(glbv, q1, q2):
+
+    equal = True
+    w = 0
+    e = 0
+    z = 0
+    p = 0
+
+    for i,r in enumerate(q1):
+        for t in xrange(glbv["tn"]):
+            if r.at != q2[i].at:
+                print "queue b information wrong."
+                exit()
+
+            if r.b[t] == q2[i].b[t]:
+                pass
+            else:
+                equal = False
+                #print "i:%3d t:%3d b1:%5.1f b2:%5.1f" % (i, t, r.b[t]/1024.0, q2[i].b[t]/1024.0)
+
+    if not equal:
+        for i,r in enumerate(q1):
+            x = 0
+            y = 0
+            for t in xrange(glbv["tn"]):
+                if t < r.at:
+                    x += r.b[t]
+                    y += q2[i].b[t]
+                    w += r.b[t]
+                    e += q2[i].b[t]
+                z += r.b[t]
+                p += q2[i].b[t]
+            print i, x, y
+
+
+    print "\n"
+    print w,e
+    print z,p
+
+    return equal
 
 
 class Request(object):
     """class for all requests"""
 
-    def __init__(self, args):
+    def __init__(self, glbv):
         """init function"""
 
-        ot = args["ot"]
-        tn = args["tn"]
+        ot = glbv["ot"]
+        tn = glbv["tn"]
 
         self.at = ot        # arrival time
         self.ft = ot        # finish time
