@@ -4,12 +4,14 @@
 from xlrd import *
 # from xlwt import *
 from xlutils.copy import copy
+from csv import *
 from pulp import *
 from random import *
 from operator import attrgetter
 from copy import deepcopy
 from math import ceil
 import platform
+import re
 
 
 def pause():
@@ -21,24 +23,26 @@ def load_glbv():
     """load global variables from .xls"""
     glbv = {}
     glbv["path"] = ""
-    config_file = ""
+    glbv["config_file"] = ""
 
     if platform.system() == "Windows":
         glbv["path"] = "D:\Experiment\prefetching-simulation"
-        config_file = glbv["path"]+"\data\glbv.xls"
+        glbv["config_file"] = glbv["path"]+"\data\glbv.csv"
     elif platform.system() == "Linux":
         glbv["path"] = "/home/pangzy/virtualenv/pzy/test"
-        config_file = glbv["path"]+"/glbv.xls"
+        glbv["config_file"] = glbv["path"]+"/glbv.csv"
 
-    xls = open_workbook(config_file)
-    table = xls.sheet_by_index(0)
+    rf = reader(open(glbv["config_file"], "rb"))
 
-    for i in xrange(table.nrows):
-        glbv[table.cell(i, 0).value] = table.cell(i, 1).value
+    for i in rf:
+        glbv[i[0]] = i[1]
 
     for k, v in glbv.iteritems():
-        if isinstance(v, float) and k != "recall" and k != "precision":
+        if re.match(r'^-?\d+$', v):
             glbv[k] = int(v)
+
+    glbv["recall"] = float(glbv["recall"])
+    glbv["precision"] = float(glbv["precision"])
 
     glbv["t"] = glbv["tn"]*glbv["tl"]
     glbv["n"] = glbv["t"]/glbv["f"]
