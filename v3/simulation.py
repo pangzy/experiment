@@ -75,6 +75,7 @@ model.c3 = Constraint(model.i, rule=c3_rule)
 
 print "solve problem."
 opt = SolverFactory("glpk")
+
 instance = model.create()
 result = opt.solve(instance)
 instance.load(result)
@@ -124,8 +125,8 @@ output(glbv, res_perfect, "perfect")
 output(glbv, res_imperfect, "imperfect")
 
 if glbv["wrt"] == "y":
-    wrt(glbv, res_perfect, glbv["result1"], 1)
-    wrt(glbv, res_imperfect, glbv["result1"], 2)
+    wrt(glbv, res_perfect, glbv["result_file"], 1)
+    wrt(glbv, res_imperfect, glbv["result_file"], 2)
 
 
 # debug(glbv, a, b)

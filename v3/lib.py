@@ -2,16 +2,14 @@
 # -*- coding: utf-8 -*-
 
 from xlrd import *
-from xlwt import *
+# from xlwt import *
 from xlutils.copy import copy
 from pulp import *
 from random import *
 from operator import attrgetter
 from copy import deepcopy
 from math import ceil
-
-
-GLBV = "D:\Experiment\prefetching-simulation\data\glbv.xls"
+import platform
 
 
 def pause():
@@ -21,10 +19,19 @@ def pause():
 
 def load_glbv():
     """load global variables from .xls"""
-
-    xls = open_workbook(GLBV)
-    table = xls.sheet_by_index(0)
     glbv = {}
+    glbv["path"] = ""
+    config_file = ""
+
+    if platform.system() == "Windows":
+        glbv["path"] = "D:\Experiment\prefetching-simulation"
+        config_file = glbv["path"]+"\data\glbv.xls"
+    elif platform.system() == "Linux":
+        glbv["path"] = "/home/pangzy/virtualenv/pzy/test"
+        config_file = glbv["path"]+"/glbv.xls"
+
+    xls = open_workbook(config_file)
+    table = xls.sheet_by_index(0)
 
     for i in xrange(table.nrows):
         glbv[table.cell(i, 0).value] = table.cell(i, 1).value
@@ -35,6 +42,13 @@ def load_glbv():
 
     glbv["t"] = glbv["tn"]*glbv["tl"]
     glbv["n"] = glbv["t"]/glbv["f"]
+
+    if platform.system() == "Windows":
+        glbv["data_file"] = glbv["path"]+"\data\\"+glbv["data1"]
+        glbv["result_file"] = glbv["path"]+"\data\\"+glbv["result1"]
+    elif platform.system() == "Linux":
+        glbv["data_file"] = glbv["path"]+"/"+glbv["data1"]
+        glbv["result_file"] = glbv["path"]+"/"+glbv["result1"]
 
     return glbv
 
@@ -100,7 +114,7 @@ def load_base(glbv, pos):
 
     print "loading data..."
 
-    rfile = glbv["data1"]
+    rfile = glbv["data_file"]
     sheet_index = pos[0]
     time_col = pos[1]
     size_col = pos[2]
