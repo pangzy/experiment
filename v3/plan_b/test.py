@@ -20,6 +20,22 @@ end_row = {"0": 829, "1": 1646, "2": 2465, "3": 3306, "4": 4126, "5": 4967, "6":
 
 end_row2 = {"0": 24983, "1": 25885, "2": 26237,"3": 26749,"4": 27032,"5": 27407}
 
+
+for i in xrange(0, 11):  #100KB ~ 900KB
+    for j in xrange(5):
+        try:
+            wb = load_workbook(glbv["config_file"])
+            ws = wb.get_sheet_by_name("Sheet1")
+            ws.cell("B8").set_explicit_value(10*1024*1024, data_type="n")  # maxs
+            ws.cell("B2").set_explicit_value(600+i*60, data_type="n")  # maxs
+            ws.cell("B10").set_explicit_value(1.0, data_type="n")  # recall
+            ws.cell("B11").set_explicit_value(1.0-j/10.0, data_type="n")  # precision
+            wb.save(glbv["config_file"])
+            system("simulation.py")
+        except KeyboardInterrupt:
+            print "\nCaught KeyboardInterrupt, program terminate."
+            exit()
+
 """
 for i in xrange(6):
     for j in xrange(5):  # accuracy
@@ -87,9 +103,8 @@ for i in xrange(24):  # 24 hours
         except KeyboardInterrupt:
             print "\nCaught KeyboardInterrupt, program terminate."
             exit()
-"""
+
 # generate data
-"""
 for i in xrange(6):
     for j in xrange(5):  # accuracy
         try:
@@ -131,8 +146,8 @@ for i in xrange(6):
             print "\nCaught KeyboardInterrupt, program terminate."
             exit()
 
-"""
-for i in xrange(2, 24):  # 24 hours
+
+for i in xrange(24):  # 24 hours
     for j in xrange(5):  # accuracy
         try:
             wb = load_workbook(glbv["config_file"])
@@ -172,3 +187,4 @@ for i in xrange(2, 24):  # 24 hours
         except KeyboardInterrupt:
             print "\nCaught KeyboardInterrupt, program terminate."
             exit()
+"""

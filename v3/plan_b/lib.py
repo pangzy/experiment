@@ -24,8 +24,8 @@ def load_glbv():
     glbv["config_file"] = ""
 
     if platform.system() == "Windows":
-        glbv["path"] = "D:\Experiment\prefetching-simulation"
-        glbv["config_file"] = glbv["path"]+"\project\glbv.xlsx"
+        glbv["path"] = "D:\Experiment\prefetching-simulation\project\plan_b\\"
+        glbv["config_file"] = glbv["path"]+"glbv.xlsx"
     elif platform.system() == "Linux":
         glbv["path"] = "/home/pangzy/virtualenv/test_1/test"
         glbv["config_file"] = glbv["path"]+"/glbv.xlsx"
@@ -44,8 +44,8 @@ def load_glbv():
     glbv["n"] = glbv["t"]/glbv["f"]
 
     if platform.system() == "Windows":
-        glbv["data_file"] = glbv["path"]+"\data\\"+glbv["data1"]
-        glbv["result_file"] = glbv["path"]+"\data\\"+glbv["result1"]
+        glbv["data_file"] = glbv["path"]+glbv["data1"]
+        glbv["result_file"] = glbv["path"]+glbv["result1"]
     elif platform.system() == "Linux":
         glbv["data_file"] = glbv["path"]+"/"+glbv["data1"]
         glbv["result_file"] = glbv["path"]+"/"+glbv["result1"]
@@ -586,6 +586,77 @@ def validate(glbv, q1, q2):
     print z,p
 
     return equal
+
+
+def simulate_fcfs(glbv, queue):
+    tn = glbv["tn"]
+    tl = glbv["tl"]
+    B = glbv["b"]
+    ot = glbv["ot"]
+    ureq_recorder = []
+
+    preq_recorder = []
+    nreq_recorder = []
+
+    for t in xrange(tn):
+        for r in queue:
+            if r.left > 0 and r not in nreq_recorder:
+                if r.at <= t:
+                    nreq_recorder.append(r)
+
+        for r in preq_recorder[::-1]:
+            if r.at <= t:
+                preq_recorder.pop(preq_recorder.index(r))
+
+        if len(nreq_recorder) == 0:
+            b_available = B
+
+            for r in queue:
+                if sum([ceil(x.left/float(tl)) for x in preq_recorder]) >= b_available:
+                    break
+
+                if r.at > t and r not in preq_recorder:
+                    preq_recorder.append(r)
+
+            for r in preq_recorder:
+                if ceil(r.left/float(tl)) <= b_available:
+                    r.b[t] = ceil(r.left/float(tl))
+                    b_available -= ceil(r.left/float(tl))
+                else:
+                    r.b[t] = b_available
+                    b_available = 0
+
+                r.left -= r.b[t]*tl
+                r.psize += r.b[t]*tl
+        else:
+            for r in nreq_recorder:
+                r.b[t] = B/len(nreq_recorder)
+                r.left -= r.b[t]*tl
+
+        for r in queue:
+            if r.left <= 0 and r.ft == ot:
+                if r.at > t:
+                    r.ft = r.at-1
+                else:
+                    r.ft = t
+
+                if r in preq_recorder:
+                    preq_recorder.pop(preq_recorder.index(r))
+                elif r in nreq_recorder:
+                    nreq_recorder.pop(nreq_recorder.index(r))
+
+    for r in queue:
+        if r.left <= 0:
+            r.wt = r.ft-r.at+1
+            r.gsize = r.size
+            r.left = 0
+        else:
+            r.ft = tn-1
+            r.wt = r.ft-r.at+1
+            r.gsize = r.size-r.left
+            ureq_recorder.append(r)
+
+    return ureq_recorder
 
 
 class Request(object):

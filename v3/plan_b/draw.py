@@ -14,6 +14,8 @@ def draw(data_file, scheme=0):
     rb = open_workbook(data_file)
     s1 = rb.sheet_by_index(1)  # perfect
     s2 = rb.sheet_by_index(2)  # imperfect
+    s3 = rb.sheet_by_index(3)  # fcfs_perfect
+    s4 = rb.sheet_by_index(4)  # fcfs_imperfect
 
 
     if scheme == 1:
@@ -240,7 +242,136 @@ def draw(data_file, scheme=0):
         plt.legend()
         plt.show()
 
+    if scheme == 11:
+        plt.figure(1)
+        plt.title("size ~ effect")
+        plt.xlabel("max size (KB)")
+        plt.ylabel("speed up (%)")
+        plt.axis([0, 22000, 0, 110])
 
-draw("D:\Experiment\prefetching-simulation\project\\result.xls", 4)
+        x = s1.col_values(6, start_rowx=1, end_rowx=30)
+        y = s1.col_values(11, start_rowx=1, end_rowx=30)
+        plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize')
+
+        y = s3.col_values(11, start_rowx=1, end_rowx=30)
+        plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs')
+
+        plt.legend()
+        plt.show()
+
+    if scheme == 12:
+        plt.title("omega++  (max size=10MB")
+        plt.xlabel("omega")
+        plt.ylabel("speed up (%)")
+        plt.axis([580, 1220, 0, 110])
+
+        x = s1.col_values(1, start_rowx=30, end_rowx=41)
+        y = s1.col_values(11, start_rowx=30, end_rowx=41)
+        plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize')
+
+        y = s3.col_values(11, start_rowx=30, end_rowx=41)
+        plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs')
+
+        plt.legend()
+        plt.show()
+
+    if scheme == 13:
+        plt.title("recall<-->omega effect (max size=10MB")
+        plt.xlabel("omega")
+        plt.ylabel("speed up (%)")
+        plt.axis([580, 1220, 0, 110])
+
+        x = s2.col_values(1)[41:92:5]
+        y = s2.col_values(12)[41:92:5]
+        plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize-1.0')
+        y = s4.col_values(12)[41:92:5]
+        plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs-1.0')
+        plt.show()
+        y = s2.col_values(12)[42:93:5]
+        plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize-0.9')
+        y = s4.col_values(12)[42:93:5]
+        plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs-0.9')
+
+        y = s2.col_values(12)[43:94:5]
+        plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize-0.8')
+        y = s4.col_values(12)[43:94:5]
+        plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs-0.8')
+
+        y = s2.col_values(12)[44:95:5]
+        plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize-0.7')
+        y = s4.col_values(12)[44:95:5]
+        plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs-0.7')
+
+        y = s2.col_values(12)[45:96:5]
+        plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize-0.6')
+        y = s4.col_values(12)[45:96:5]
+        plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs-0.6')
+
+        plt.legend()
+
+
+    if scheme == 14:
+        plt.title("precision<-->omega effect (max size=10MB")
+        plt.xlabel("omega")
+        plt.ylabel("speed up (%)")
+        plt.axis([580, 1220, 0, 110])
+
+        x = s2.col_values(1)[96:147:5]
+        y = s2.col_values(12)[96:147:5]
+        plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize-1.0')
+        y = s4.col_values(12)[96:147:5]
+        plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs-1.0')
+
+        y = s2.col_values(12)[97:148:5]
+        plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize-0.9')
+        y = s4.col_values(12)[97:148:5]
+        plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs-0.9')
+
+        y = s2.col_values(12)[98:149:5]
+        plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize-0.8')
+        y = s4.col_values(12)[98:149:5]
+        plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs-0.8')
+
+        y = s2.col_values(12)[99:150:5]
+        plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize-0.7')
+        y = s4.col_values(12)[99:150:5]
+        plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs-0.7')
+
+        y = s2.col_values(12)[100:151:5]
+        plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize-0.6')
+        y = s4.col_values(12)[100:151:5]
+        plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs-0.6')
+
+        plt.legend()
+        plt.show()
+
+    if scheme == 15:
+        plt.figure(1)
+        for i in xrange(9):
+            plt.subplot(331+i)
+            plt.title(str(600+i*60)+"s", fontsize=9)
+            plt.axis([0.5, 1.1, 0, 110])
+            x = s2.col_values(9)[(41+i*5):(46+i*5)]
+            y = s2.col_values(12)[(41+i*5):(46+i*5)]
+            plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize')
+            y = s4.col_values(12)[(41+i*5):(46+i*5)]
+            plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs')
+            plt.legend(loc="upper left", fontsize=9)
+
+        plt.figure(2)
+        for i in xrange(9):
+            plt.subplot(331+i)
+            plt.title(str(600+i*60)+"s", fontsize=9)
+            plt.axis([0.5, 1.1, 0, 110])
+            x = s2.col_values(10)[(96+i*5):(101+i*5)]
+            y = s2.col_values(12)[(96+i*5):(101+i*5)]
+            plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize')
+            y = s4.col_values(12)[(96+i*5):(101+i*5)]
+            plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs')
+            plt.legend(loc="upper left", fontsize=9)
+        plt.show()
+
+
+draw("D:\Experiment\prefetching-simulation\project\plan_b\\result.xls", 15)
 
 
