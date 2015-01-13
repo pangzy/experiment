@@ -21,16 +21,16 @@ def load_glbv():
     """load global variables from .xls"""
     glbv = {}
     glbv["path"] = ""
-    config_file = ""
+    glbv["config_file"] = ""
 
     if platform.system() == "Windows":
         glbv["path"] = "D:\Experiment\prefetching-simulation"
-        config_file = glbv["path"]+"\data\glbv.xls"
+        glbv["config_file"] = glbv["path"]+"\data\glbv.xlsx"
     elif platform.system() == "Linux":
-        glbv["path"] = "/home/pangzy/virtualenv/pzy/test"
-        config_file = glbv["path"]+"/glbv.xls"
+        glbv["path"] = "/home/pangzy/virtualenv/test_1/test"
+        glbv["config_file"] = glbv["path"]+"/glbv.xlsx"
 
-    xls = open_workbook(config_file)
+    xls = open_workbook(glbv["config_file"])
     table = xls.sheet_by_index(0)
 
     for i in xrange(table.nrows):
@@ -401,8 +401,11 @@ def stats(queue1, u1, queue2, u2, accuracy=(1.0, 1.0)):
     # 13 : unfinished_req_before
     # 14 : unfinished_req_after
     # 15 : avg_size
+    # 16 : avg_wtime1_perKB(ms)
+    # 17 : avg_wtime2_perKB(ms)
+    # 18 : avg_wtime_perKB_decreased(ms)
 
-    res = [0 for i in xrange(16)]
+    res = [0 for i in xrange(19)]
 
     for i,r in enumerate(queue2):
         res[0] += r.size
@@ -437,11 +440,14 @@ def stats(queue1, u1, queue2, u2, accuracy=(1.0, 1.0)):
     res[13] = len(u1)*100.0/len(queue2)
     res[14] = len(u2)*100.0/len(queue2)
     res[15] = res[0]/len(queue1)
+    res[16] = res[4]*1000/(res[0]/1024.0)
+    res[17] = res[5]*1000/(res[0]/1024.0)
+    res[18] = res[16]-res[17]
+
 
     if accuracy == (1.0, 1.0):
         res[8] = 0.0
         res[9] = 0.0
-        res[10] = 0.0
 
     return res
 
@@ -467,6 +473,9 @@ def output(glbv, res, tag="wrong"):
     print "| false traffic ratio             : %.1f%%" % res[9]
     print "| unfinished req before schedule  : %.1f%%" % res[13]
     print "| unfinished req after schedule   : %.1f%%" % res[14]
+    print "| waiting density before schedule : %.1f ms" % res[16]
+    print "| waiting density after schedule  : %.1f ms" % res[17]
+    print "| waiting density decreased       : %.1f ms" % res[18]
     print "-------------------------------------------------------"
 
 
@@ -498,6 +507,9 @@ def wrt(glbv, res, res_file, sheet):
     ws.write(wrn, 18, float("%.1f" % res[9]))               # false traffic ratio
     ws.write(wrn, 19, float("%.1f" % res[13]))              # unfinished req before schedule
     ws.write(wrn, 20, float("%.1f" % res[14]))              # unfinished req after schedule
+    ws.write(wrn, 21, float("%.1f" % res[16]))              # avg_wtime1_perKB
+    ws.write(wrn, 22, float("%.1f" % res[17]))              # avg_wtime2_perKB
+    ws.write(wrn, 23, float("%.1f" % res[18]))              # avg_wtime_perKB_decreased
 
     wb.save(res_file)
 
