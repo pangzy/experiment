@@ -246,14 +246,14 @@ def draw(data_file, scheme=0):
         plt.figure(1)
         plt.title("size ~ effect")
         plt.xlabel("max size (KB)")
-        plt.ylabel("speed up (%)")
+        plt.ylabel("prefetch (%)")
         plt.axis([0, 22000, 0, 110])
 
         x = s1.col_values(6, start_rowx=1, end_rowx=30)
-        y = s1.col_values(11, start_rowx=1, end_rowx=30)
+        y = s1.col_values(16, start_rowx=1, end_rowx=30)
         plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize')
 
-        y = s3.col_values(11, start_rowx=1, end_rowx=30)
+        y = s3.col_values(16, start_rowx=1, end_rowx=30)
         plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs')
 
         plt.legend()
@@ -351,27 +351,34 @@ def draw(data_file, scheme=0):
             plt.subplot(331+i)
             plt.title(str(600+i*60)+"s", fontsize=9)
             plt.axis([0.5, 1.1, 0, 110])
-            x = s2.col_values(9)[(41+i*5):(46+i*5)]
-            y = s2.col_values(12)[(41+i*5):(46+i*5)]
+            # x = s2.col_values(9)[(41+i*5):(46+i*5)]
+            # y = s2.col_values(12)[(41+i*5):(46+i*5)]
+            # plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize')
+            # y = s4.col_values(12)[(41+i*5):(46+i*5)]
+            # plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs')
+            # plt.legend(loc="upper left", fontsize=9)
+
+            x = s2.col_values(9)[(151+i*5):(156+i*5)]
+            y = s2.col_values(12)[(151+i*5):(156+i*5)]
             plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize')
-            y = s4.col_values(12)[(41+i*5):(46+i*5)]
+            y = s4.col_values(12)[(151+i*5):(156+i*5)]
             plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs')
             plt.legend(loc="upper left", fontsize=9)
 
-        plt.figure(2)
-        for i in xrange(9):
-            plt.subplot(331+i)
-            plt.title(str(600+i*60)+"s", fontsize=9)
-            plt.axis([0.5, 1.1, 0, 110])
-            x = s2.col_values(10)[(96+i*5):(101+i*5)]
-            y = s2.col_values(12)[(96+i*5):(101+i*5)]
-            plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize')
-            y = s4.col_values(12)[(96+i*5):(101+i*5)]
-            plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs')
-            plt.legend(loc="upper left", fontsize=9)
+        #plt.figure(2)
+        #for i in xrange(9):
+        #    plt.subplot(331+i)
+        #    plt.title(str(600+i*60)+"s", fontsize=9)
+        #    plt.axis([0.5, 1.1, 0, 110])
+        #    x = s2.col_values(10)[(96+i*5):(101+i*5)]
+        #    y = s2.col_values(12)[(96+i*5):(101+i*5)]
+        #    plt.plot(x, y, color="green", marker="o", markerfacecolor="green", label='optimize')
+        #    y = s4.col_values(12)[(96+i*5):(101+i*5)]
+        #    plt.plot(x, y, color="blue", marker="s", markerfacecolor="blue", label='fcfs')
+        #    plt.legend(loc="upper left", fontsize=9)
         plt.show()
 
 
-draw("D:\Experiment\prefetching-simulation\project\plan_b\\result.xls", 15)
+draw("D:\Experiment\prefetching-simulation\project\plan_b\\result.xls", 11)
 
 
