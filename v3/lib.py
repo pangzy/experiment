@@ -7,10 +7,11 @@ from xlutils.copy import copy
 from pulp import *
 from random import *
 from operator import attrgetter
-from copy import deepcopy
 from math import ceil
+from ConfigParser import ConfigParser
+# from pyomo.environ import *
+# from pyomo.opt import SolverFactory
 import platform
-
 
 def pause():
     if raw_input("press any key to continue:"):
@@ -25,27 +26,44 @@ def load_glbv():
 
     if platform.system() == "Windows":
         glbv["path"] = "D:\Experiment\prefetching-simulation"
-        glbv["config_file"] = glbv["path"]+"\project\glbv.xlsx"
+        glbv["config_file"] = glbv["path"]+"\project\glbv.conf"
     elif platform.system() == "Linux":
-        glbv["path"] = "/home/pangzy/virtualenv/test_1/test"
-        glbv["config_file"] = glbv["path"]+"/glbv.xlsx"
+        glbv["path"] = "/home/pzy/test"
+        glbv["config_file"] = glbv["path"]+"/glbv.conf"
 
-    xls = open_workbook(glbv["config_file"])
-    table = xls.sheet_by_index(0)
+    cf = ConfigParser()
+    cf.read(glbv["config_file"])
 
-    for i in xrange(table.nrows):
-        glbv[table.cell(i, 0).value] = table.cell(i, 1).value
-
-    for k, v in glbv.iteritems():
-        if isinstance(v, float) and k != "recall" and k != "precision":
-            glbv[k] = int(v)
+    glbv["tl"] = cf.getint("glbv", "tl")
+    glbv["tn"] = cf.getint("glbv", "tn")
+    glbv["t"] = cf.getint("glbv", "t")
+    glbv["f"] = cf.getint("glbv", "f")
+    glbv["n"] = cf.getint("glbv", "n")
+    glbv["b"] = cf.getint("glbv", "b")
+    glbv["ot"] = cf.getint("glbv", "ot")
+    glbv["maxs"] = cf.getint("glbv", "maxs")
+    glbv["mins"] = cf.getint("glbv", "mins")
+    glbv["recall"] = cf.getfloat("glbv", "recall")
+    glbv["precision"] = cf.getfloat("glbv", "precision")
+    glbv["source"] = cf.get("glbv", "source")
+    glbv["solver"] = cf.get("glbv", "solver")
+    glbv["dis"] = cf.get("glbv", "dis")
+    glbv["wrt"] = cf.get("glbv", "wrt")
+    glbv["draw"] = cf.get("glbv", "draw")
+    glbv["data1"] = cf.get("glbv", "data1")
+    glbv["result1"] = cf.get("glbv", "result1")
+    glbv["sheet_index"] = cf.getint("glbv", "sheet_index")
+    glbv["time_col"] = cf.getint("glbv", "time_col")
+    glbv["size_col"] = cf.getint("glbv", "size_col")
+    glbv["start_row"] = cf.getint("glbv", "start_row")
+    glbv["end_row"] = cf.getint("glbv", "end_row")
 
     glbv["t"] = glbv["tn"]*glbv["tl"]
     glbv["n"] = glbv["t"]/glbv["f"]
 
     if platform.system() == "Windows":
-        glbv["data_file"] = glbv["path"]+"\data\\"+glbv["data1"]
-        glbv["result_file"] = glbv["path"]+"\data\\"+glbv["result1"]
+        glbv["data_file"] = glbv["path"]+"\\project\\"+glbv["data1"]
+        glbv["result_file"] = glbv["path"]+"\\project\\"+glbv["result1"]
     elif platform.system() == "Linux":
         glbv["data_file"] = glbv["path"]+"/"+glbv["data1"]
         glbv["result_file"] = glbv["path"]+"/"+glbv["result1"]
@@ -53,14 +71,14 @@ def load_glbv():
     return glbv
 
 
-def rdm_poi(glbv):
+def rdm_poi(f, bound):
     """generate a integer sequence under poisson distribution"""
-    lamda = 1.0/glbv["f"]
+    lamda = 1.0/f
     ti = 0.0
     seq = []
     while True:
         ti += expovariate(lamda)
-        if int(ti) >= glbv["t"]:
+        if int(ti) >= bound:
             break
         else:
             seq.append(int(ti))
@@ -68,17 +86,11 @@ def rdm_poi(glbv):
     return seq
 
 
-def rdm_uni(glbv, n, use):
+def rdm_uni(lower, upper, n, sort=False):
     """generate a integer sequence under uniform random distribution"""
-    seq = []
-    if use == "time":
-        seq = [randint(0, glbv["t"]-1) for i in xrange(n)]
+    seq = [randint(lower, upper) for i in xrange(n)]
+    if sort:
         seq.sort()
-    elif use == "size":
-        seq = [randint(glbv["mins"], glbv["maxs"]) for i in xrange(n)]
-    else:
-        print "need a 'use' argument for generate uniform data."
-        exit()
 
     return seq
 
@@ -90,17 +102,17 @@ def gen_base(glbv):
     time_seq = []
     size_seq = []
     if glbv["dis"] == "poisson":
-        time_seq = rdm_poi(glbv)
+        time_seq = rdm_poi(glbv["f"], glbv["t"])
         glbv["n"] = len(time_seq)
-        size_seq = rdm_uni(glbv, glbv["n"], "size")
+        size_seq = rdm_uni(glbv["mins"], glbv["maxs"], glbv["n"])
     elif glbv["dis"] == "uniform":
-        time_seq = rdm_uni(glbv, glbv["n"], "time")
-        size_seq = rdm_uni(glbv, glbv["n"], "size")
+        time_seq = rdm_uni(0, glbv["t"]-1, glbv["n"], sort=True)
+        size_seq = rdm_uni(glbv["mins"], glbv["maxs"], glbv["n"])
     else:
         print "need an argument for data distribution."
         exit()
 
-    for i in xrange(glbv["n"]):
+    for i in xrange(len(time_seq)):
         queue.append(Request(glbv))
         queue[i].at = time_seq[i]/glbv["tl"]
         queue[i].size = size_seq[i]
@@ -109,17 +121,17 @@ def gen_base(glbv):
     return queue
 
 
-def load_base(glbv, pos):
+def load_base(glbv):
     """load arrival queue from .xls"""
 
     print "loading data..."
 
     rfile = glbv["data_file"]
-    sheet_index = pos[0]
-    time_col = pos[1]
-    size_col = pos[2]
-    start_row = pos[3]
-    end_row = pos[4]
+    sheet_index = glbv["sheet_index"]
+    time_col = glbv["time_col"]
+    size_col = glbv["size_col"]
+    start_row = glbv["start_row"]
+    end_row = glbv["end_row"]
 
     xls_file = open_workbook(rfile)
     table = xls_file.sheet_by_index(sheet_index)
@@ -145,22 +157,35 @@ def load_base(glbv, pos):
     return queue
 
 
-def gen_deviation(queue, glbv, accuracy=(1.0, 1.0)):
+def clone_queue(glbv, q):
+    cq = []
+    for i in xrange(len(q)):
+        cq.append(Request(glbv))
+        cq[i].at = q[i].at
+        cq[i].size = q[i].size
+        cq[i].left = q[i].left
+        cq[i].flag = q[i].flag
+        cq[i].id = q[i].id
+
+    return cq
+
+
+def gen_deviation(queue, glbv):
     """generate deviation data
        input: arrival queue
        output: predicted(hit+false) queue, submitted(hit+false+miss) queue, arrival(hit+miss) queue
     """
 
-    recall = accuracy[0]
-    precision = accuracy[1]
+    recall = glbv["recall"]
+    precision = glbv["precision"]
     hit = int(recall*glbv["n"])
     miss = glbv["n"]-hit
     false = int(((1.0-precision)/precision)*hit)
 
     # false queue
     f_queue = []
-    time_seq = rdm_uni(glbv, false, "time")
-    size_seq = rdm_uni(glbv, false, "size")
+    time_seq = rdm_uni(0, glbv["t"]-1, false, sort=True)
+    size_seq = rdm_uni(glbv["mins"], glbv["maxs"], false)
     for i in xrange(false):
         f_queue.append(Request(glbv))
         f_queue[i].at = time_seq[i]/glbv["tl"]
@@ -172,7 +197,7 @@ def gen_deviation(queue, glbv, accuracy=(1.0, 1.0)):
     for i in sample(xrange(len(queue)), miss):
         queue[i].flag = "miss"
 
-    a_queue = deepcopy(queue)
+    a_queue = clone_queue(glbv, queue)
 
     # miss queue
     m_queue = []
@@ -187,7 +212,7 @@ def gen_deviation(queue, glbv, accuracy=(1.0, 1.0)):
     for i,r in enumerate(queue):
         r.id = i
 
-    p_queue = deepcopy(queue)
+    p_queue = clone_queue(glbv, queue)
 
     # submitted queue
     queue.extend(m_queue)
@@ -206,16 +231,25 @@ def inh_data(queue1, queue2, glbv):
                 r.b[t] = queue2[r.id].b[t]
 
 
-def simulate(glbv, queue, scheduled=False, perfect=True):
-    """simulate request events"""
+def simulate(glbv, queue, q_type):
+    """
+    q_type :
+        a : predict queue without schedule
+        b : predict queue with schedule
+        c : evaluation queue without schedule
+        d : evaluation queue with schedule
+        fcfs : first come first service with schedule
+    """
     tn = glbv["tn"]
     tl = glbv["tl"]
     B = glbv["b"]
     ot = glbv["ot"]
     ureq_recorder = []
+    nreq_recorder = []
+    preq_recorder = []
+    mreq_recorder = []
 
-    if not scheduled:
-        nreq_recorder = []
+    if q_type == "a" or q_type == "c":
         for t in xrange(tn):
             for r in queue:
                 if r.at <= t and r.left > 0 and (r not in nreq_recorder):
@@ -240,11 +274,8 @@ def simulate(glbv, queue, scheduled=False, perfect=True):
                 r.wt = r.ft-r.at+1
                 r.gsize = r.size-r.left
                 ureq_recorder.append(r)
-    else:
-        preq_recorder = []
-        nreq_recorder = []
-        mreq_recorder = []
 
+    elif q_type == "b" or q_type == "d":
         for t in xrange(tn):
             for r in queue:
                 if r.left > 0 and r not in mreq_recorder and r not in preq_recorder and r not in nreq_recorder:
@@ -260,12 +291,12 @@ def simulate(glbv, queue, scheduled=False, perfect=True):
                 if r.at <= t:
                     nreq_recorder.append(preq_recorder.pop(preq_recorder.index(r)))
 
-            if not perfect:
+            if q_type == "d":
                 for r in nreq_recorder[::-1]:
                     if r.bdt < t:
                         mreq_recorder.append(nreq_recorder.pop(nreq_recorder.index(r)))
 
-            if perfect and len(mreq_recorder) != 0:
+            if q_type == "b" and len(mreq_recorder) != 0:
                 print "schedule wrong."
                 exit()
 
@@ -312,10 +343,69 @@ def simulate(glbv, queue, scheduled=False, perfect=True):
                 r.gsize = r.size-r.left
                 ureq_recorder.append(r)
 
+    elif q_type == "fcfs":
+        for t in xrange(tn):
+            for r in queue:
+                if r.left > 0 and r not in nreq_recorder:
+                    if r.at <= t:
+                        nreq_recorder.append(r)
+
+            for r in preq_recorder[::-1]:
+                if r.at <= t:
+                    preq_recorder.pop(preq_recorder.index(r))
+
+            if len(nreq_recorder) == 0:
+                b_available = B
+
+                for r in queue:
+                    if sum([ceil(x.left/float(tl)) for x in preq_recorder]) >= b_available:
+                        break
+
+                    if r.at > t and r.flag != "miss" and r not in preq_recorder:
+                        preq_recorder.append(r)
+
+                for r in preq_recorder:
+                    if ceil(r.left/float(tl)) <= b_available:
+                        r.b[t] = ceil(r.left/float(tl))
+                        b_available -= ceil(r.left/float(tl))
+                    else:
+                        r.b[t] = b_available
+                        b_available = 0
+
+                    r.left -= r.b[t]*tl
+                    r.psize += r.b[t]*tl
+            else:
+                for r in nreq_recorder:
+                    r.b[t] = B/len(nreq_recorder)
+                    r.left -= r.b[t]*tl
+
+            for r in queue:
+                if r.left <= 0 and r.ft == ot:
+                    if r.at > t:
+                        r.ft = r.at-1
+                    else:
+                        r.ft = t
+
+                    if r in preq_recorder:
+                        preq_recorder.pop(preq_recorder.index(r))
+                    elif r in nreq_recorder:
+                        nreq_recorder.pop(nreq_recorder.index(r))
+
+        for r in queue:
+            if r.left <= 0:
+                r.wt = r.ft-r.at+1
+                r.gsize = r.size
+                r.left = 0
+            else:
+                r.ft = tn-1
+                r.wt = r.ft-r.at+1
+                r.gsize = r.size-r.left
+                ureq_recorder.append(r)
+
     return ureq_recorder
 
 
-def schedule(glbv, queue1, queue2):
+def schedule_pulp(glbv, queue1, queue2):
     """solve lp problem"""
 
     tl = glbv["tl"]
@@ -382,7 +472,58 @@ def schedule(glbv, queue1, queue2):
     return varb, prob.objective
 
 
-def stats(queue1, u1, queue2, u2, accuracy=(1.0, 1.0)):
+def schedule_pyomo(glbv, queue1, queue2):
+    ti = [r.at for r in queue1]
+    si = [r.gsize for r in queue1]
+    Ti = [r.ft for r in queue1]
+    Si = [r.size for r in queue1]
+
+    model = AbstractModel("schedule")
+    model.n = Param(default=glbv["n"])
+    model.T = Param(default=glbv["tn"])
+    model.B = Param(default=glbv["b"])
+    model.tl = Param(default=glbv["tl"])
+    model.i = RangeSet(0, model.n-1)
+    model.t = RangeSet(0, model.T-1)
+
+    print "define var."
+    model.b = Var(model.i, model.t, domain=NonNegativeIntegers, bounds=(0, model.B))
+
+    print "define obj."
+    def obj_rule(model):
+        return sum(model.tl*model.b[i,t] for i in xrange(model.n) for t in xrange(ti[i]))
+    model.obj = Objective(rule=obj_rule, sense=maximize)
+
+    print "define constraints."
+    def c1_rule(model, t):
+        return sum(model.b[i,t] for i in xrange(model.n)) <= model.B
+    model.c1 = Constraint(model.t, rule=c1_rule)
+
+    def c2_rule(model, i):
+        return sum(model.tl*model.b[i,t] for t in xrange(Ti[i]+1)) >= si[i]
+    model.c2 = Constraint(model.i, rule=c2_rule)
+
+    def c3_rule(model, i):
+        return sum(model.tl*model.b[i,t] for t in xrange(model.T)) <= Si[i]
+    model.c3 = Constraint(model.i, rule=c3_rule)
+
+    print "solve problem."
+    opt = SolverFactory("glpk")
+
+    instance = model.create()
+    result = opt.solve(instance)
+    instance.load(result)
+
+    print "\n%d solution found in pyomo." % len(result.solution)
+    for i,r in enumerate(result.solution):
+        print "  solution %d : %s" % (i+1, r.status)
+
+    for i in xrange(glbv["n"]):
+        for t in xrange(glbv["tn"]):
+            queue2[i].b[t] = int(instance.b[i,t].value)
+
+
+def stats(glbv, queue1, u1, queue2, u2):
     """statistics about schedule"""
 
     # 0  : total_size
@@ -444,9 +585,10 @@ def stats(queue1, u1, queue2, u2, accuracy=(1.0, 1.0)):
     res[17] = res[5]*1000/(res[0]/1024.0)
     res[18] = res[16]-res[17]
 
-
-    if accuracy == (1.0, 1.0):
+    if glbv["recall"] == 1.0:
         res[8] = 0.0
+
+    if glbv["precision"] == 1.0:
         res[9] = 0.0
 
     return res

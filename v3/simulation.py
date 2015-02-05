@@ -1,18 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
-from pyomo.environ import *
-from pyomo.opt import SolverFactory
 from lib import *
 from copy import deepcopy
 # from pulp import *
 
-
 glbv = load_glbv()
-
-pos = (glbv["sheet_index"], glbv["time_col"], glbv["size_col"], glbv["start_row"], glbv["end_row"])
-accuracy = (glbv["recall"], glbv["precision"])
 base = []
 
 if glbv["source"] == "g":
@@ -20,7 +13,7 @@ if glbv["source"] == "g":
     base = gen_base(glbv)
 elif glbv["source"] == "l":
     print "\nload base data."
-    base = load_base(glbv, pos)
+    base = load_base(glbv)
 elif glbv["source"] == "r":
     pass
 else:
@@ -28,105 +21,58 @@ else:
     exit()
 
 print "generate deviation data."
-q_list = gen_deviation(base, glbv, accuracy)
+q_list = gen_deviation(base, glbv)
 
 a = q_list[0]  # predicted queue
-b = deepcopy(a)
 glbv["n"] = len(a)
-# tmp_b = deepcopy(b)
+b = clone_queue(glbv, a)
+a_fcfs = clone_queue(glbv, a)
 
-print "simulate perfect queue before schedule."
-unfinished_a = simulate(glbv, a, scheduled=False, perfect=True)
+print "\nsimulate predict queue without schedule in plan [optimize]."
+unfinished_a = simulate(glbv, a, q_type="a")
 
-print "schedule perfect queue."
-ti = [r.at for r in a]
-si = [r.gsize for r in a]
-Ti = [r.ft for r in a]
-Si = [r.size for r in a]
+# schedule_pyomo(glbv, a, b)
+schedule_pulp(glbv, a, b)
 
-model = AbstractModel("schedule")
-model.n = Param(default=glbv["n"])
-model.T = Param(default=glbv["tn"])
-model.B = Param(default=glbv["b"])
-model.tl = Param(default=glbv["tl"])
-model.i = RangeSet(0, model.n-1)
-model.t = RangeSet(0, model.T-1)
+print "\nsimulate predict queue with schedule in plan [optimize]."
+unfinished_b = simulate(glbv, b, q_type="b")
 
-print "define var."
-model.b = Var(model.i, model.t, domain=NonNegativeIntegers, bounds=(0, model.B))
-
-print "define obj."
-def obj_rule(model):
-    return sum(model.tl*model.b[i,t] for i in xrange(model.n) for t in xrange(ti[i]))
-model.obj = Objective(rule=obj_rule, sense=maximize)
-
-print "define constraints."
-def c1_rule(model, t):
-    return sum(model.b[i,t] for i in xrange(model.n)) <= model.B
-model.c1 = Constraint(model.t, rule=c1_rule)
-
-def c2_rule(model, i):
-    return sum(model.tl*model.b[i,t] for t in xrange(Ti[i]+1)) >= si[i]
-model.c2 = Constraint(model.i, rule=c2_rule)
-
-def c3_rule(model, i):
-    return sum(model.tl*model.b[i,t] for t in xrange(model.T)) <= Si[i]
-model.c3 = Constraint(model.i, rule=c3_rule)
-
-print "solve problem."
-opt = SolverFactory("glpk")
-
-instance = model.create()
-result = opt.solve(instance)
-instance.load(result)
-
-print "\n%d solution found in pyomo." % len(result.solution)
-for i,r in enumerate(result.solution):
-    print "  solution %d : %s" % (i+1, r.status)
-
-for i in xrange(glbv["n"]):
-    for t in xrange(glbv["tn"]):
-        b[i].b[t] = int(instance.b[i,t].value)
-
-# v = schedule(glbv, a, tmp_b)
-
-# print result.solution[0].objective
-# print "pulp"
-# print pulp.value(v[1])
-
-# pause()
-
-# validate(glbv, b, tmp_b)
-
-# pause()
-
-print "\nsimulate perfect queue after schedule."
-unfinished_b = simulate(glbv, b, scheduled=True, perfect=True)
-# tmp_unfinished_b = simulate(glbv, tmp_b, scheduled=True, perfect=True)
+print "simulate predict queue with schedule in plan [fcfs]."
+unfinished_a_fcfs = simulate(glbv, a_fcfs, q_type="fcfs")
 
 c = q_list[1]  # submitted queue
-d = deepcopy(c)
+d = clone_queue(glbv, c)
+c_fcfs = clone_queue(glbv, c)
+# c_fcfs = deepcopy(c)
 inh_data(d, b, glbv)
 
-# tmp_d = deepcopy(c)
-# inh_data(tmp_d, tmp_b, glbv)
+print "\nsimulate evaluation queue without schedule in plan [optimize]."
+unfinished_c = simulate(glbv, c, q_type="c")
 
-print "simulate imperfect queue before schedule."
-unfinished_c = simulate(glbv, c, scheduled=False, perfect=False)
+print "simulate evaluation queue with schedule in plan [optimize]."
+unfinished_d = simulate(glbv, d, q_type="d")
 
-print "simulate imperfect queue after schedule."
-unfinished_d = simulate(glbv, d, scheduled=True, perfect=False)
-# tmp_unfinished_d = simulate(glbv, tmp_d, scheduled=True, perfect=False)
+print "simulate evaluation queue with schedule in plan [fcfs]."
+unfinished_c_fcfs = simulate(glbv, c_fcfs, q_type="fcfs")
 
-res_perfect = stats(a, unfinished_a, b, unfinished_b)
-res_imperfect = stats(c, unfinished_c, d, unfinished_d, accuracy)
+print "\nprocess result."
+res_pq = stats(glbv, a, unfinished_a, b, unfinished_b)
+res_eq = stats(glbv, c, unfinished_c, d, unfinished_d)
 
-output(glbv, res_perfect, "perfect")
-output(glbv, res_imperfect, "imperfect")
+res_fcfs_pq = stats(glbv, a, unfinished_a, a_fcfs, unfinished_a_fcfs)
+res_fcfs_eq = stats(glbv, c, unfinished_c, c_fcfs, unfinished_c_fcfs)
+
+output(glbv, res_pq, "predicted queue")
+output(glbv, res_eq, "evaluation queue")
+
+output(glbv, res_fcfs_pq, "fcfs predicted queue")
+output(glbv, res_fcfs_eq, "fcfs evaluation queue")
 
 if glbv["wrt"] == "y":
-    wrt(glbv, res_perfect, glbv["result_file"], 1)
-    wrt(glbv, res_imperfect, glbv["result_file"], 2)
+    wrt(glbv, res_pq, glbv["result_file"], 1)
+    wrt(glbv, res_eq, glbv["result_file"], 2)
+    wrt(glbv, res_fcfs_pq, glbv["result_file"], 3)
+    wrt(glbv, res_fcfs_eq, glbv["result_file"], 4)
 
 
 # debug(glbv, a, b)
