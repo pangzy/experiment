@@ -3,6 +3,7 @@
 
 import os
 from collections import defaultdict
+from time import strptime, mktime
 
 
 def pause():
@@ -65,6 +66,9 @@ def rename_user():
                     pause()
 
             f.close()
+
+    print len(user_dict)
+    exit()
 
     for item in list_dir:
         if os.path.isfile(item) and ".http" in item:
@@ -137,8 +141,22 @@ def rename_type():
             wf.close()
 
 
+def sort_by_time():
+    list_dir = os.listdir(os.getcwd())
+    for item in list_dir:
+        if os.path.isfile(item) and ".http" in item:
+            f = open(item)
+            lines = f.readlines()
+            lines.sort(key=lambda i: int(mktime(strptime(i[0:19], "%Y-%m-%d %H:%M:%S"))))
+            f.close()
+            wf = open(item, "w")
+            wf.writelines(lines)
+            wf.close()
+
+
 if __name__ == '__main__':
-    reassemble_from_date()
+    #reassemble_from_date()
     rename_user()
-    rename_type()
-    find_dup()
+    #rename_type()
+    #find_dup()
+    #sort_by_time()
